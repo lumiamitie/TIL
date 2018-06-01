@@ -24,58 +24,65 @@
 </body>
 <script>
     var app = new Vue({
-      el: '#app',
-      data: {
-        message: 'Venn Diagram',
-        sizeA: 12,
-        sizeB: 12,
-        sizeAB: 2,
-        nameA: 'A',
-        nameB: 'B'
-      },
-      methods: {
-        drawVenn: function(sets) {
-            let chart = venn.VennDiagram();
-          d3.select("#venn").datum(sets).call(chart);
-
-          let color = ['#88B04B', '#BED0BE'];
-
-          d3.selectAll('#venn .venn-circle path')
-            .style('fill-opacity', 0.1)
-            .style('stroke-width', 5)
-            .style('stroke-opacity', 0.5)
-            .style('stroke', (d, i) => color[i])
-            .style('fill', (d, i) => color[i]);
-
-          d3.selectAll('#venn .venn-circle text')
-            .style('font-size', '1em')
-            .style('font-weight', 300)
-            .style('font-family', 'Apple SD Gothic Neo')
-            .style('fill', (d, i) => color[i]);
-
+        el: '#app',
+        data: {
+            sizeA: 12,
+            sizeB: 12,
+            sizeAB: 2,
+            nameA: 'A',
+            nameB: 'B'
         },
-        destroyVenn: function() {
-            d3.selectAll('#venn svg').remove();
+        methods: {
+            drawVenn: function(sets) {
+                // 벤다이어그램 생성
+                let chart = venn.VennDiagram();
+                d3.select("#venn").datum(sets).call(chart);
+
+                // 색상
+                let color = ['#88B04B', '#BED0BE'];
+
+                // 노드 도형 스타일 설정
+                d3.selectAll('#venn .venn-circle path')
+                    .style('fill-opacity', 0.1)
+                    .style('stroke-width', 5)
+                    .style('stroke-opacity', 0.5)
+                    .style('stroke', (d, i) => color[i])
+                    .style('fill', (d, i) => color[i]);
+
+                // 노드 이름 스타일 설정
+                d3.selectAll('#venn .venn-circle text')
+                    .style('font-size', '1em')
+                    .style('font-weight', 300)
+                    .style('font-family', 'Apple SD Gothic Neo')
+                    .style('fill', (d, i) => color[i]);
+
+            },
+            destroyVenn: function() {
+                // #venn 하위의 svg 항목 전체를 제거한다
+                d3.selectAll('#venn svg').remove();
+            }
+        },
+        computed: {
+            sets: function() {
+                // A, B 항목의 이름 또는 수치가 변경될 경우 다시 계산되도록 한다
+                return [
+                    { sets: [this.nameA], size: this.sizeA }, 
+                    { sets: [this.nameB], size: this.sizeB },
+                    { sets: [this.nameA, this.nameB], size: this.sizeAB }
+                ];
+            }
+        },
+        watch: {
+            sets: function() {
+                // `sets`에 변동이 생길 경우 그래프를 지우고 다시 작성
+                this.destroyVenn();
+                this.drawVenn(this.sets);
+            }
+        },
+        mounted() {
+            // App이 마운트 될 때 벤다이어그램 작성
+            this.drawVenn(this.sets);
         }
-      },
-      computed: {
-        sets: function() {
-            return [
-            { sets: [this.nameA], size: this.sizeA }, 
-            { sets: [this.nameB], size: this.sizeB },
-            { sets: [this.nameA, this.nameB], size: this.sizeAB }
-          ];
-        }
-      },
-      watch: {
-        sets: function() {
-            this.destroyVenn();
-          this.drawVenn(this.sets);
-        }
-      },
-      mounted() {
-        this.drawVenn(this.sets);
-      }
     });
 </script>
 </html>
