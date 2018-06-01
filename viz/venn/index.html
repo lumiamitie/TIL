@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Venn Diagram</title>
+    <script src="https://d3js.org/d3.v5.min.js"></script>
+    <script src="https://cdn.rawgit.com/benfred/venn.js/master/venn.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vue"></script>
+</head>
+<body>
+    <div id="app">
+        <p>
+            <label>Source A Name</label><input type="text" v-model="nameA">
+        </p>
+        <p>
+            <label>Source B Name</label><input type="text" v-model="nameB">
+        </p>
+        <p>
+            <label>A</label><input type="text" v-model.number="sizeA">
+            <label>B</label><input type="text" v-model.number="sizeB">
+            <label>AB</label><input type="text" v-model.number="sizeAB">
+        </p>
+        <div id="venn"></div>
+    </div>
+</body>
+<script>
+    var app = new Vue({
+      el: '#app',
+      data: {
+        message: 'Venn Diagram',
+        sizeA: 12,
+        sizeB: 12,
+        sizeAB: 2,
+        nameA: 'A',
+        nameB: 'B'
+      },
+      methods: {
+        drawVenn: function(sets) {
+            let chart = venn.VennDiagram();
+          d3.select("#venn").datum(sets).call(chart);
+
+          let color = ['#88B04B', '#BED0BE'];
+
+          d3.selectAll('#venn .venn-circle path')
+            .style('fill-opacity', 0.1)
+            .style('stroke-width', 5)
+            .style('stroke-opacity', 0.5)
+            .style('stroke', (d, i) => color[i])
+            .style('fill', (d, i) => color[i]);
+
+          d3.selectAll('#venn .venn-circle text')
+            .style('font-size', '1em')
+            .style('font-weight', 300)
+            .style('font-family', 'Apple SD Gothic Neo')
+            .style('fill', (d, i) => color[i]);
+
+        },
+        destroyVenn: function() {
+            d3.selectAll('#venn svg').remove();
+        }
+      },
+      computed: {
+        sets: function() {
+            return [
+            { sets: [this.nameA], size: this.sizeA }, 
+            { sets: [this.nameB], size: this.sizeB },
+            { sets: [this.nameA, this.nameB], size: this.sizeAB }
+          ];
+        }
+      },
+      watch: {
+        sets: function() {
+            this.destroyVenn();
+          this.drawVenn(this.sets);
+        }
+      },
+      mounted() {
+        this.drawVenn(this.sets);
+      }
+    });
+</script>
+</html>
