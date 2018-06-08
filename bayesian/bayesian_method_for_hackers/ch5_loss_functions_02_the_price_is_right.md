@@ -139,3 +139,226 @@ df_price_posterior = pd.DataFrame({
 - 순수베이지안은 여기서 단순히 사후분포의 평균을 고를 것이다. (약 20,000달러)
 
 하지만 우리는 여기에 손실함수를 추가하여 제시할 수 있는 최고의 가격을 구할 것이다.
+
+참가자의 손실함수는 어떤 모습일까? 제시할 수 있는 모든 가격에 대한 기대손실값도 계산해보자
+
+
+```python
+def showcase_loss(guess, true_price, risk=80000):
+    '''
+    risk: 추측한 값이 실제 가격보다 높을 경우 얼마나 페널티를 적용할지 결정하기 위한 값
+    '''
+    if true_price < guess:
+        return risk
+    if abs(true_price - guess) < 250:
+        # $250보다 낮은 차이로 가격을 제시할 경우 원래 상품의 두 배를 상으로 받게 한다
+        return -2 * np.abs(true_price)
+    else:
+        # 추정치와 진짜 가격의 차이에 대한 증가함수
+        return np.abs(true_price - guess - 250)
+```
+
+
+```python
+def showdown_loss(guess, true_price, risk=80000):
+    loss = np.zeros_like(true_price)
+    ix = true_price < guess
+    loss[~ix] = np.abs(guess - true_price[~ix])
+    close_mask = [abs(true_price - guess) <= 250]
+    loss[close_mask] = -2 * true_price[close_mask]
+    loss[ix] = risk
+    return loss
+```
+
+
+```python
+guesses = np.linspace(5000, 50000, 70)
+risks = np.linspace(30000, 150000, 6)
+```
+
+
+```python
+expected_loss = lambda guess, risk: showdown_loss(guess, price_trace, risk).mean()
+```
+
+
+```python
+results = []
+for _p in risks:
+    _e_loss = [expected_loss(_g, _p) for _g in guesses]
+    df_data = pd.DataFrame({
+        'risk': str(int(_p)), 
+        'expected_loss': _e_loss,
+        'price': guesses
+    })
+    results.append(df_data)
+    
+df_expected_loss = pd.concat(results)
+```
+
+
+```python
+df_expected_loss.head()
+```
+
+
+<div>
+<table class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>expected_loss</th>
+      <th>price</th>
+      <th>risk</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>14636.088371</td>
+      <td>5000.000000</td>
+      <td>30000</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>13983.914458</td>
+      <td>5652.173913</td>
+      <td>30000</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>13330.750379</td>
+      <td>6304.347826</td>
+      <td>30000</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>12686.910147</td>
+      <td>6956.521739</td>
+      <td>30000</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>12048.143004</td>
+      <td>7608.695652</td>
+      <td>30000</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+
+
+```python
+(ggplot(df_expected_loss.query('price <= 30000'), 
+        aes(x='price', y='expected_loss', color='risk')) +
+  geom_line() +
+  scale_color_brewer(type='qual', palette='Paired') +
+  xlab('제시한 가격') + ylab('Expected Loss') +
+  ggtitle('여러 추정에 따른 기대손실') +
+  theme_gray(base_family='Kakao') +
+  theme(figure_size=(12,6))
+)
+```
+
+
+![png](fig_ch5_2/output_22_0.png)
+
+
+우리의 기대손실을 최소화하는 추정치를 선택하는 것이 좋다. 위 그래프에서 각 곡선의 최저점에 해당하는 부분이 기대손실을 최소화시키는 지점이다.
+
+기대손실의 최소값을 **베이즈 추정치 (Bayes action)** 라고 한다. scipy의 최적화 루틴을 통해 베이즈 추정치를 구할 수 있다.
+
+
+```python
+import scipy.optimize as sop
+```
+
+
+```python
+result_bayes_action = []
+
+for _p in risks:
+    _min_results = sop.fmin(expected_loss, 15000, args=(_p,), disp=False)
+    _results = [expected_loss(_g, _p) for _g in guesses]
+    result_bayes_action.append({'risk': str(int(_p)), 'bayes_action': _min_results[0]})
+    
+df_bayes_action = pd.DataFrame(result_bayes_action)
+
+df_bayes_action
+```
+
+
+<div>
+<table class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>bayes_action</th>
+      <th>risk</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>14406.112432</td>
+      <td>30000</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>12824.431121</td>
+      <td>54000</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>10855.219960</td>
+      <td>78000</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>10805.449426</td>
+      <td>102000</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>10079.199672</td>
+      <td>126000</td>
+    </tr>
+    <tr>
+      <th>5</th>
+      <td>10015.217721</td>
+      <td>150000</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+```python
+(ggplot(df_expected_loss.query('price <= 30000'), 
+        aes(x='price', y='expected_loss', color='risk')) +
+  geom_line() +
+  geom_vline(data=df_bayes_action, mapping=aes(xintercept='bayes_action', color='risk'), 
+             linetype='--') +
+  scale_color_brewer(type='qual', palette='Paired') +
+  xlab('제시한 가격') + ylab('Expected Loss') +
+  ggtitle('여러 추정에 따른 기대손실과 베이즈 추정치') +
+  theme_gray(base_family='Kakao') +
+  theme(figure_size=(12,6))
+)
+```
+
+
+![png](fig_ch5_2/output_26_0.png)
+
+
+리스크 임계점을 줄이면 제시 가격을 진짜 가격에 근접하게 높일 수 있다. 최적화된 손실은 사후 평균 (약 20,000) 에서 꽤 멀리 떨어져있다.
+
+### Shortcuts
+
+특정 손실함수의 베이즈 추정치는 closed form으로 구할 수 있다
+
+- mean-squared loss를 사용한다면 베이즈 추정치는 사후분포의 평균이다. 계산상으로는 사후확률분포의 표본평균을 계산한다
+- 사후확률분포의 중앙값은 absolute-loss의 기대값을 최소화한다
+- MAP 추정은 zero-one loss를 사용해서 구한 방법이다
