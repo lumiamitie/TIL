@@ -91,7 +91,7 @@ ls_intercept_ = Y.mean() - (ls_coef_ * X.mean())
 ```
 
 
-![png](output_12_0.png)
+![png](fig_ch5_3/output_12_0.png)
 
 
 위 데이터셋에 대해 간단한 베이지안 선형회귀를 수행해보자. 모델은 다음과 같다.
