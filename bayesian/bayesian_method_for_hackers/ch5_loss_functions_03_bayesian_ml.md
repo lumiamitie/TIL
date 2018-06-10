@@ -85,7 +85,6 @@ ls_intercept_ = Y.mean() - (ls_coef_ * X.mean())
  xlab('Trading Signal') + ylab('returns') +
  ggtitle('수익률 vs 매매신호 비교') +
  theme_gray(base_family='Kakao') +
- #theme(figure_size=(12,6))
  theme(figure_size=(12,6), plot_title=element_text(ha='left', x=0.13, size=15))
 )
 ```
