@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Bar Chart : Gradient Effect</title>
+</head>
+<body>
+    <h1>막대그래프에 그라디언트 적용하기</h1>
+    <div id="view"></div>
+    <script src="https://vega.github.io/vega/vega.min.js"></script>
+</body>
+<script>
+    var spec = {
+      "$schema": "https://vega.github.io/schema/vega/v4.json",
+      "width": 400,
+      "height": 200,
+      "padding": 5,
+
+      "data": [
+        {
+          "name": "table",
+          "values": [
+            {"category": "1월", "amount": 28},
+            {"category": "2월", "amount": 55},
+            {"category": "3월", "amount": 43},
+            {"category": "4월", "amount": 91},
+            {"category": "5월", "amount": 81},
+            {"category": "6월", "amount": 53},
+            {"category": "7월", "amount": 19},
+            {"category": "8월", "amount": 87}
+          ]
+        }
+      ],
+
+      "signals": [
+        {
+          "name": "tooltip",
+          "value": {},
+          "on": [
+            {"events": "rect:mouseover", "update": "datum"},
+            {"events": "rect:mouseout",  "update": "{}"}
+          ]
+        }
+      ],
+
+      "scales": [
+        {
+          "name": "xscale",
+          "type": "band",
+          "domain": {"data": "table", "field": "category"},
+          "range": "width",
+          "padding": 0.05,
+          "round": true
+        },
+        {
+          "name": "yscale",
+          "domain": {"data": "table", "field": "amount"},
+          "nice": true,
+          "range": "height"
+        }
+      ],
+
+      "axes": [
+        { 
+          "orient": "bottom", 
+          "scale": "xscale",
+          "domainColor": "#cccccc",
+          "tickColor": "#cccccc",
+          "tickSize": 0,
+          "labelPadding": 5,
+          "labelColor": "#cccccc"
+        },
+        { 
+          "orient": "left", 
+          "scale": "yscale",
+          "tickCount": 5,
+          "grid": true,
+          "domain": false,
+          "labelPadding": 10,
+          "tickColor": "#cccccc",
+          "labelColor": "#cccccc"
+        }
+      ],
+
+      "marks": [
+        {
+          "type": "rect",
+          "from": {"data":"table"},
+          "encode": {
+            "enter": {
+              "x": {"scale": "xscale", "field": "category", "band": 0.25, "offset": 1},
+              "width": {"scale": "xscale", "band": 0.5},
+              "y": {"scale": "yscale", "field": "amount"},
+              "y2": {"scale": "yscale", "value": 0},
+              "cornerRadius": {"value": 8}
+            },
+            "update": {
+              "fill": {"value": {
+                  "id": "rgb",
+                  "x1": 0.0,
+                  "y1": 0.0,
+                  "x2": 0.0,
+                  "y2": 1.0,
+                  "stops": [
+                    {"color": "#FA79B1", "offset": 0.0},
+                    {"color": "#F9CB70", "offset": 0.5}
+                  ]
+                }
+              },
+              "opacity": 1
+            },
+            "hover": {
+              "opacity": {"value": 0.7}
+            }
+          }
+        },
+        {
+          "type": "text",
+          "encode": {
+            "enter": {
+              "align": {"value": "center"},
+              "baseline": {"value": "bottom"},
+              "fill": {"value": "#333"}
+            },
+            "update": {
+              "x": {"scale": "xscale", "signal": "tooltip.category", "band": 0.5},
+              "y": {"scale": "yscale", "signal": "tooltip.amount", "offset": -2},
+              "text": {"signal": "tooltip.amount"},
+              "fillOpacity": [
+                {"test": "datum === tooltip", "value": 0},
+                {"value": 1}
+              ]
+            }
+          }
+        }
+      ]
+    };
+
+    var view = new vega.View(vega.parse(spec))
+            .renderer('canvas')  // set renderer (canvas or svg)
+            .initialize('#view') // initialize view within parent DOM container
+            .hover()             // enable hover encode set processing
+            .run();
+</script>
+</html>
