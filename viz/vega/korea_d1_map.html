@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Map : D1 region</title>
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/vega-tooltip@0.5/build/vega-tooltip.min.css">
+</head>
+<body>
+    <h1>광역단체 지도 시각화</h1>
+    <div id="view"></div>
+    <script src="https://vega.github.io/vega/vega.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vega-tooltip@0.5"></script>
+</body>
+<script>
+    var dummy_data = [
+        {"name": "서울특별시", "value": 2984957},
+        {"name": "경기도", "value": 3310982},
+        {"name": "강원도", "value": 304440},
+        {"name": "인천광역시", "value": 746060},
+        {"name": "대구광역시", "value": 572993},
+        {"name": "울산광역시", "value": 258896},
+        {"name": "제주특별자치도", "value": 110514},
+        {"name": "부산광역시", "value": 779766},
+        {"name": "대전광역시", "value": 421662},
+        {"name": "광주광역시", "value": 368544},
+        {"name": "충청북도", "value": 323532},
+        {"name": "충청남도", "value": 415834},
+        {"name": "경상북도", "value": 500863},
+        {"name": "경상남도", "value": 639259},
+        {"name": "전라남도", "value": 270379},
+        {"name": "전라북도", "value": 344212},
+        {"name": "세종특별자치시", "value": 44810}
+      ];
+
+var choropleth_spec = {
+  "$schema": "https://vega.github.io/schema/vega/v3.json",
+  "width": 500,
+  "height": 420,
+  "autosize": "fit",
+  "data": [
+      {
+      "name": "population",
+      "values": dummy_data,
+      "transform": [
+            {"type": "formula", "as": "logvalue", "expr": "log(datum.value)"}
+      ]
+    },
+    {
+      "name": "provinces",
+      "url": "https://raw.githubusercontent.com/southkorea/southkorea-maps/master/kostat/2013/json/skorea_provinces_topo_simple.json",
+      "format": {"type": "topojson", "feature": "skorea_provinces_geo"},
+      "transform": [
+        { "type": "lookup", "from": "population", "key": "name", 
+          "fields": ["properties.name"], "values": ["logvalue", "value"] }
+       ]
+     },
+     {
+       "name": "valuerange",
+       "source": "population",
+       "transform": [
+         {"type": "extent", "field": "logvalue", "signal": "valuerange"}
+       ]
+     }
+  ],
+  
+  "projections": [
+    {
+      "name": "projection",
+      "type": "mercator",
+      "scale": 3500,
+      "center": [132, 35.15]
+    }
+  ],
+  
+  "scales": [
+    {
+      "name": "color",
+      "type": "sequential",
+      "domain": {"signal": "valuerange"},
+      "range": {"scheme": "greens"}
+    }
+  ],
+  
+  "marks": [
+    {
+      "type": "shape",
+      "from": {"data": "provinces"},
+      "encode": {
+        "enter": { "fill": {"scale": "color", "field": "logvalue"},
+                   "stroke": {"value": "#ffffff"},
+                   "strokeWidth": {"value": 0.5}
+                 },
+        "update": { "fill": {"scale": "color", "field": "logvalue"} },
+        "hover": { "fill": {"value": "#BED0BE"} }
+      },
+      "transform": [
+        { "type": "geoshape", "projection": "projection" }
+      ]
+    }
+  ]
+}
+
+// embeding 및 다른 옵션 (렌더링 선택, export 등) 을 사용하려면 vegaEmbed를 사용
+// vegaEmbed('#view', choropleth_spec);
+
+// 디버깅 및 streaming 기능을 사용하려면 Vega View API 를 사용
+var view = new vega.View(vega.parse(choropleth_spec))
+        .renderer('canvas')
+        .initialize('#view')
+        .hover()
+        .run();
+
+vegaTooltip.vega(view, {
+  fields: [
+    {
+      field: "properties.name",
+      title: "지역"
+    },
+    {
+      field: "value",
+      title: "방문자수"
+    }
+  ]
+})
+</script>
+</html>
