@@ -4,13 +4,6 @@
 * 파일 제거후 다시 커밋을 하고 push했더니 다음과 같은 오류가 발생하면서 push가 실패한다
     * remote: error: GH001: Large files detected.
 
-```
-remote: error: GH001: Large files detected. You may want to try Git Large File Storage - https://git-lfs.github.com.
-remote: error: File dashboard_project/target_ids.feather is 182.72 MB; this exceeds GitHub Enterprise's file size limit of 100.00 MB
-To https://github.daumkakao.com/miika-mh/py_analysis_code.git
- ! [remote rejected] master -> master (pre-receive hook declined)
-error: failed to push some refs to 'https://github.daumkakao.com/miika-mh/py_analysis_code.git'
-```
 
 # 해결방법
 
