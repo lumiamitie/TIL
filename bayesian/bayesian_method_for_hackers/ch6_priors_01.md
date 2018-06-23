@@ -83,3 +83,133 @@ sd = 5인 정규분포의 모수 mu를 추정한다고 해보자. mu는 실수 �
 경험적 베이즈 : 관측 데이터 -> 사전확률 -> 관측 데이터 -> 사후확률
 전통적 베이즈 : 사전확률 -> 관측 데이터 -> 사후확률
 ```
+
+## 알아두면 유용한 사전확률분포
+
+베이지안 분석 방법론에서 공통적으로 사용되는 분포들에 대해 알아보자.
+
+### 감마분포 (Gamma Distribution)
+
+감마확률변수(`X ~ Gamma(alpha, beta)`)는 양의 실수에 대한 확률변수다. 이것은 사실 지수확률변수의 일반형이다.
+
+```
+Exp(beta) ~ Gamma(1, beta)
+```
+
+(alpha, beta)의 여러 값에 대한 감마분포는 다음과 같다.
+
+
+```python
+parameters = [(1, 0.5), (9, 2), (3, 0.5), (7, 0.5)]
+x = np.linspace(0.001, 20, 150)
+temp_density = []
+
+for alpha, beta in parameters:
+    y = stats.gamma.pdf(x, alpha, scale=1/beta)
+    _density = pd.DataFrame({
+        'parameter': '({0}, {1})'.format(alpha, beta), 
+        'x': x, 
+        'y': y
+    })
+    temp_density.append(_density)
+    
+df_density = pd.concat(temp_density)
+```
+
+
+```python
+(ggplot(df_density, aes(x='x', y='y', fill='parameter')) +
+  geom_density(stat='identity', alpha=0.5) +
+  scale_fill_brewer(type='qual', palette='Paired') +
+  xlab('X값') + ylab('Density') + 
+  ggtitle('alpha와 beta값에 따른 감마분포 형태') +
+  theme_gray(base_family='Kakao') +
+  theme(figure_size=(12,6))
+)
+```
+
+
+![png](fig_ch6_1/output_21_0.png)
+
+
+### 위샤트분포 (Wishart distribution)
+
+지금까지 우리는 스칼라인 확률변수만 다루었다. 물론 행렬도 다룰 수 있다. **위샤트분포**는 Positive semi-definite 행렬에 대한 분포다. 이게 왜 필요할까? 공분산 행렬이 positive-definite 행렬이기 때문에, 위샤트분포는 공분산행렬에 대한 사전확률분포로 적합하다. 
+
+
+```python
+def wishart(n):
+    df_density = pd.DataFrame({
+        'n': n,
+        'x': list(range(1, n+1))*n,
+        'y': sorted(list(range(1, n+1))*n, reverse=True),
+        'density': stats.wishart.rvs(n+1, np.eye(n)).reshape(n**2)
+    })
+    
+    return df_density
+```
+
+
+```python
+df_wishart = wishart(5)
+```
+
+
+```python
+(ggplot(df_wishart, aes(x='x', y='y', fill='density')) +
+  geom_tile(stat='identity') +
+  facet_wrap('~ n', scales='free') + 
+  scale_fill_gradient(low='#ffffff', high='#7f2704') +
+  xlab('X값') + ylab('Density') + 
+  ggtitle('5x5 위샤트분포') +
+  theme_gray(base_family='Kakao') +
+  theme(figure_size=(12,6))
+)
+```
+
+
+![png](fig_ch6_1/output_26_0.png)
+
+
+### 베타분포
+
+베타분포는 확률변수를 0~1 사이의 값으로 정의한다. 따라서 소수, 확률, 비율을 모델링하기 위한 분포로 많이 사용한다. 모수가 (alpha, beta)인 베타분포에서 alpha, beta값 모두 양수이고, 두 파라미터를 통해 다양한 형태를 구성할 수 있다.
+
+
+```python
+parameters = [(2, 5), (1, 1), (0.5, 0.5), (5, 5), (20, 4), (5, 1)]
+x = np.linspace(0.01, 0.99, 100)
+temp_density = []
+
+for a, b in parameters:
+    y = stats.beta.pdf(x, a, b)
+    
+    _density = pd.DataFrame({
+        'parameter': '({0}, {1})'.format(a, b), 
+        'x': x, 
+        'y': y
+    })
+    temp_density.append(_density)
+
+df_density_beta = pd.concat(temp_density)
+```
+
+
+```python
+(ggplot(df_density_beta, aes(x='x', y='y', fill='parameter')) +
+  geom_density(stat='identity', alpha=0.5) +
+  scale_fill_brewer(type='qual', palette='Paired') +
+  xlab('X값') + ylab('Density') + 
+  ggtitle('alpha와 beta값에 따른 베타분포 형태ㅠ') +
+  theme_gray(base_family='Kakao') +
+  theme(figure_size=(12,6))
+)
+```
+
+
+![png](fig_ch6_1/output_30_0.png)
+
+
+Beta(1, 1)은 균등분포다. 베타분포는 균등분포를 일반화한 결과라고 생각할 수 있다.
+
+베타분포와 이항분포 사이에는 흥미로운 관계가 존재한다. 이항분포를 따르는 관측치를 가진 베타사전분포는 베타사후분포를 갖는다. 구체적으로 살펴보자면, 미지의 확률 p에 대해 `Beta(1, 1)` 사전분포를 적용하고 데이터는 `X ~ Binomial(N, p)`를 관측할 경우, 우리의 사후확률은 `Beta(1+X, 1+N-X)`가 된다. 
