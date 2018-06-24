@@ -75,7 +75,7 @@ df_priors = pd.concat([df_historical_price, df_price1, df_price2])
 ```
 
 
-![png](fig_ch5_2/output_7_0.png)
+![png](fig/fig_ch5_2/output_7_0.png)
 
 
 이제 PyMC 코드를 작성해서 상품의 진짜 가격에 대해 추론해보자
@@ -130,7 +130,7 @@ df_price_posterior = pd.DataFrame({
 ```
 
 
-![png](fig_ch5_2/output_13_1.png)
+![png](fig/fig_ch5_2/output_13_1.png)
 
 
 두 개의 관찰된 상품과 이후 추론들, 그리고 불확실성까지 고려하여 이전 기록들의 평균 가격보다 약 15,000 달러 낮춰서 예상했다.
@@ -263,7 +263,7 @@ df_expected_loss.head()
 ```
 
 
-![png](fig_ch5_2/output_22_0.png)
+![png](fig/fig_ch5_2/output_22_0.png)
 
 
 우리의 기대손실을 최소화하는 추정치를 선택하는 것이 좋다. 위 그래프에서 각 곡선의 최저점에 해당하는 부분이 기대손실을 최소화시키는 지점이다.
@@ -350,7 +350,7 @@ df_bayes_action
 ```
 
 
-![png](fig_ch5_2/output_26_0.png)
+![png](fig/fig_ch5_2/output_26_0.png)
 
 
 리스크 임계점을 줄이면 제시 가격을 진짜 가격에 근접하게 높일 수 있다. 최적화된 손실은 사후 평균 (약 20,000) 에서 꽤 멀리 떨어져있다.

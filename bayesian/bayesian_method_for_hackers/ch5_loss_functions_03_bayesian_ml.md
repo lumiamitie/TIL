@@ -59,7 +59,7 @@ df_pred = pd.concat(
 ```
 
 
-![png](fig_ch5_3/output_8_0.png)
+![png](fig/fig_ch5_3/output_8_0.png)
 
 
 예측곡선이 0인 지점을 통과할 때 손실곡선이 어떻게 지나는지 살펴보면, 잘못된 부호를 추측하거나 큰 폭으로 틀리는 것을 피하려 한다는 것을 알 수 있다. 금융기관은 하방위험과 상방위험을 비슷하게 다룬다. 따라서 참값에서 멀어질수록 큰 손실을 입게 된다.
@@ -90,7 +90,7 @@ ls_intercept_ = Y.mean() - (ls_coef_ * X.mean())
 ```
 
 
-![png](fig_ch5_3/output_12_0.png)
+![png](fig/fig_ch5_3/output_12_0.png)
 
 
 위 데이터셋에 대해 간단한 베이지안 선형회귀를 수행해보자. 모델은 다음과 같다.
@@ -134,7 +134,7 @@ pm.plots.traceplot(trace=burned_trace, varnames=['std', 'beta', 'alpha'])
 ```
 
 
-![png](fig_ch5_3/output_17_1.png)
+![png](fig/fig_ch5_3/output_17_1.png)
 
 
 각 파라미터의 샘플링된 사후분포는 다음과 같다.
@@ -145,7 +145,7 @@ pm.plot_posterior(trace=burned_trace, varnames=['std', 'beta', 'alpha'], kde_plo
 ```
 
 
-![png](fig_ch5_3/output_19_1.png)
+![png](fig/fig_ch5_3/output_19_1.png)
 
 
 이제 특정 매매신호를 x라고 해보자. 수익률의 분포는 다음과 같다
@@ -211,7 +211,7 @@ for i, _signal in enumerate(trading_signals):
 ```
 
 
-![png](fig_ch5_3/output_24_0.png)
+![png](fig/fig_ch5_3/output_24_0.png)
 
 
 위 그래프에서 흥미로운 점은 매매신호가 0 근처에 있고 수익률이 양수와 음수를 넘나들 가능성이 높을 때 0에 가까운 예측을 한다는 것이다. 다시 말하자면 **선택하지 않는다**. 이런 방식의 모델을 보통 **희소예측 (sparse prediction)** 이라고 부른다. 불확실성이 뭔가 불편할 경우에는 아무것도 하지 않는 것을 선택할 수 있다.

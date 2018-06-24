@@ -74,7 +74,7 @@ plt.xlabel('X 위치')
 plt.ylabel('Y 위치')
 ```
 
-![png](fig_ch5_4/output_13_1.png)
+![png](fig/fig_ch5_4/output_13_1.png)
 
 
 ## 사전확률
@@ -170,7 +170,7 @@ plt.ylim(0, 4200)
 ```
 
 
-![png](fig_ch5_4/output_24_1.png)
+![png](fig/fig_ch5_4/output_24_1.png)
 
 
 `Training_halos.csv` 파일에는 천체 속 암흑물질 헤일로의 위치를 최대 세 개 가지고 있다.
@@ -201,7 +201,7 @@ plt.ylim(0, 4200)
 ```
 
 
-![png](fig_ch5_4/output_27_1.png)
+![png](fig/fig_ch5_4/output_27_1.png)
 
 
 
@@ -310,7 +310,7 @@ plt.ylim(0, 4200)
 ```
 
 
-![png](fig_ch5_4/output_36_1.png)
+![png](fig/fig_ch5_4/output_36_1.png)
 
 
 

@@ -55,7 +55,7 @@ df_obj_sub = pd.concat([df_uninformative, df_informative])
 ```
 
 
-![png](fig_ch6_1/output_10_0.png)
+![png](fig/fig_ch6_1/output_10_0.png)
 
 
 주관적 사후확률분포를 선택하는 것이 항상 실무자의 주관적인 의견을 사용한다는 것은 아니다. 주관적인 사전확률분포는 이전 문제의 사후확률분포라고 볼 수도 있다. 또한 도메인 지식을 문제에 반영하는데 사용되기도 한다.
@@ -129,7 +129,7 @@ df_density = pd.concat(temp_density)
 ```
 
 
-![png](fig_ch6_1/output_21_0.png)
+![png](fig/fig_ch6_1/output_21_0.png)
 
 
 ### 위샤트분포 (Wishart distribution)
@@ -168,7 +168,7 @@ df_wishart = wishart(5)
 ```
 
 
-![png](fig_ch6_1/output_26_0.png)
+![png](fig/fig_ch6_1/output_26_0.png)
 
 
 ### 베타분포
@@ -207,7 +207,7 @@ df_density_beta = pd.concat(temp_density)
 ```
 
 
-![png](fig_ch6_1/output_30_0.png)
+![png](fig/fig_ch6_1/output_30_0.png)
 
 
 Beta(1, 1)은 균등분포다. 베타분포는 균등분포를 일반화한 결과라고 생각할 수 있다.

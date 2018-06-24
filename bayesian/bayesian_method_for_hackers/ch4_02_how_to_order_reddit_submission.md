@@ -229,7 +229,7 @@ upvote_posterior_ratio.head()
 )
 ```
 
-![png](fig_ch4_2/output_21_1.png)
+![png](fig/fig_ch4_2/output_21_1.png)
 
 
 어떤 분포는 상대적으로 더 뾰족하고, 어떤 분포는 긴 꼬리를 가지고 있다. 이것은 진짜 upvote 비율에 대한 불확실성을 나타낸다.
