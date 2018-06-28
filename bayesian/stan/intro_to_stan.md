@@ -27,17 +27,17 @@
 
 ## 2. 데이터
 
-```{r}
+```r
 library('tidyverse')
 ```
 
-```{r}
+```r
 knitr::opts_chunk$set(fig.width = 14, fig.height = 7)
 ```
 
 ### 2.1 데이터 불러오기
 
-```{r}
+```r
 url_seaice = 'https://raw.githubusercontent.com/ourcodingclub/CC-Stan-intro/master/seaice.csv'
 seaice = read_csv(url_seaice)
 ```
@@ -46,7 +46,7 @@ seaice = read_csv(url_seaice)
 
 문제에 대한 답변을 위해 그래프를 그려서 한 번 확인해보자
 
-```{r}
+```r
 ggplot(seaice, aes(x = year, y = extent_north)) +
   geom_point() +
   ggtitle('시간에 따른 북극 빙하 면적의 변화') +
@@ -58,12 +58,12 @@ ggplot(seaice, aes(x = year, y = extent_north)) +
 
 `lm` 함수를 통해 일반적인 선형 모형을 구성해보자.
 
-```{r}
+```r
 lm1 = lm(extent_north ~ year, data = seaice)
 summary(lm1)
 ```
 
-```{r}
+```r
 ggplot(seaice, aes(x = year, y = extent_north)) +
   geom_point() +
   geom_abline(slope = lm1$coefficients[2], intercept = lm1$coefficients[1],
@@ -86,7 +86,7 @@ Y = alpha + beta*X + error
 
 변수들의 이름을 변경하고, 연도를 1부터 39까지의 인덱스값으로 변환하자. 베이지안 모델에서 중요한 점 중에 하나는 데이터의 변화를 분포를 통해 나타내야 한다는 것이다. 여기서는 1979년부터 2017년 기간의 변화량에 대해서 알고자 한다. 500년이나 600년 같이 먼 시점에 대한 예측을 하려는 것이 아니기 때문에, 연도값을 1부터 시작하는 값으로 변환하여 사용한다.
 
-```{r}
+```r
 x = I(seaice$year - 1978)
 y = seaice$extent_north
 N = length(seaice$year)
@@ -94,7 +94,7 @@ N = length(seaice$year)
 
 새로 구성한 데이터로 모델을 다시 구성한다.
 
-```{r}
+```r
 lm1 = lm(y ~ x)
 summary(lm1)
 
@@ -119,7 +119,7 @@ summary(lm1)
 
 나중에 Stan 모형의 결과와 비교하기 위해서 몇 가지 요약 통계량 값을 추출한다
 
-```{r}
+```r
 lm_alpha = summary(lm1)$coeff[1]
 lm_beta = summary(lm1)$coeff[2]
 lm_sigma = sigma(lm1) # Residual Error
@@ -127,7 +127,7 @@ lm_sigma = sigma(lm1) # Residual Error
 
 이제 stan 모형에 사용할 수 있는 형태로 값을 변환해둔다
 
-```{r}
+```r
 stan_data = list(N = N, x = x, y = y)
 ```
 
@@ -135,7 +135,7 @@ stan_data = list(N = N, x = x, y = y)
 
 `Stan`으로 선형 모형을 작성해보자. R 스크립트에 작성할 수도 있고, `.stan` 파일로 따로 작성한 다음 불러와도 된다.
 
-```{r}
+```r
 library('rstan')
 library('gdata')
 library('bayesplot')
@@ -166,7 +166,7 @@ Stan 프로그램에는 꼭 필요한 세 가지 블록이 존재한다.
 
 선형 모형을 stan 코드로 작성해보자. 아래 예제에서 prior는 암묵적으로 `uniform(-inf, +inf)` 를 사용하고 있다.
 
-```{r}
+```r
 stan_model1 = "
 // Stan model for simple linear regression
 
@@ -206,7 +206,7 @@ Stan 프로그램은 사용되기 전에 C++ 코드로 컴파일된다. 따라�
 - 사용할 코어 수 (`cores`)
 - 샘플을 저장할 주기 (`thin`, 기본값은 1)
 
-```{r}
+```r
 fit = stan(model_code = stan_model1, 
            data = stan_data,
            warmup = 500,
@@ -220,7 +220,7 @@ fit = stan(model_code = stan_model1,
 
 `stan()` 함수는 `stanfit` 오브젝트를 반환한다. (S4 객체) 파라미터를 추정한 결과에 대한 요약 통계량 및 간단한 진단 결과를 확인할 수 있다.
 
-```{r}
+```r
 fit
 
 # Inference for Stan model: 872286853a38ddaf5ac4af6d3d421883.
@@ -243,7 +243,7 @@ fit
 
 모형에서 posterior를 추출해보자. 다양한 방법이 있지만 `rstan::extract()` 함수를 사용하면 간단하게 추출할 수 있다.
 
-```{r}
+```r
 posterior = rstan::extract(fit)
 
 # extract 함수는 각 파라미터에 대한 리스트의 형태로 값을 반환한다
@@ -252,7 +252,7 @@ str(posterior)
 
 `lm` 함수를 이용한 결과와 비교해보자
 
-```{r}
+```r
 data_frame(x = x, y = y) %>% 
   ggplot(aes(x = x, y = y)) +
     geom_point() +
