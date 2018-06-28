@@ -227,7 +227,7 @@ fit
 # 4 chains, each with iter=1000; warmup=500; thin=1; 
 # post-warmup draws per chain=500, total post-warmup draws=2000.
 # 
-# mean se_mean   sd  2.5%   25%   50%   75% 97.5% n_eff Rhat
+#        mean se_mean   sd  2.5%   25%   50%   75% 97.5% n_eff Rhat
 # alpha 12.56    0.00 0.08 12.40 12.50 12.56 12.60 12.70  1054    1
 # beta  -0.05    0.00 0.00 -0.06 -0.06 -0.05 -0.05 -0.05  1162    1
 # sigma  0.23    0.00 0.03  0.18  0.21  0.23  0.24  0.29  1010    1
@@ -267,3 +267,97 @@ data_frame(x = x, y = y) %>%
 ![png](fig/intro_to_stan/output03.png)
 
 stan으로 학습한 결과물이 lm함수의 결과물과 동일한 것을 확인할 수 있다. 우리가 간단한 모형에 대해 학습을 시도했고, 파라미터에 대해서 non-informative한 사전확률분포를 사용했기 때문에 이러한 결과물이 나온 것이다.
+
+모형의 변동성을 확인하기 위해 사후확률분포로부터 나온 값을 가지고 그래프를 그려보자.
+
+```r
+data_frame(x = x, y = y) %>% 
+  ggplot(aes(x = x, y = y)) +
+    geom_point() +
+    geom_abline(data = as_data_frame(posterior), aes(slope = beta, intercept = alpha),
+                color = '#cccccc', alpha = 0.1, linetype = 1) +
+    geom_abline(slope = mean(posterior$beta), intercept = mean(posterior$alpha),
+                color = 'steelblue', linetype = 2) +
+    ggtitle('시간에 따른 북극 빙하 면적의 변화 (stan 모형)') +
+    theme_minimal(base_family = 'Apple SD Gothic Neo')
+```
+
+![png](fig/intro_to_stan/output04.png)
+
+# 5. Prior 변경하기
+
+이번에는 훨씬 정보를 더 담고 있는 사전확률분포를 사용해보자. 표준편차가 작은 정규분포를 prior로 사용하여 학습을 시켜보자. 표준편차가 매우 큰 (1000 이상?) 정규분포라면 균등분포를 사용했을 때와 비슷한 결과가 나올 것이다.
+
+```r
+stan_model2 = "
+  // Stan model for simple linear regression
+  
+  data {
+    int < lower = 1 > N; // Sample size
+    vector[N] x; // Predictor
+    vector[N] y; // Outcome
+  }
+  
+  parameters {
+    real alpha; // Intercept
+    real beta; // Slope (regression coefficients)
+    real < lower = 0 > sigma; // Error SD
+  }
+  
+  model {
+    alpha ~ normal(10, 0.1); // Informative Prior!!
+    beta ~ normal(1, 0.1);   // Informative Prior!!
+    y ~ normal(alpha + x * beta , sigma);
+  }
+  
+  generated quantities {}"
+```
+
+```r
+fit2 = stan(model_code = stan_model2, 
+            data = stan_data,
+            warmup = 500,
+            iter = 1000,
+            chains = 4,
+            cores = 2,
+            thin = 1)
+```
+
+```r
+fit2
+
+# Inference for Stan model: c53f2bae344435208db650039ec66720.
+# 4 chains, each with iter=1000; warmup=500; thin=1; 
+# post-warmup draws per chain=500, total post-warmup draws=2000.
+# 
+#         mean se_mean   sd   2.5%    25%    50%    75%  97.5% n_eff Rhat
+# alpha  10.10    0.00 0.10   9.89  10.03  10.10  10.17  10.30  1280    1
+# beta    0.05    0.00 0.01   0.03   0.04   0.05   0.05   0.07  1197    1
+# sigma   1.30    0.01 0.17   1.01   1.17   1.28   1.39   1.72   993    1
+# lp__  -75.09    0.04 1.31 -78.52 -75.68 -74.76 -74.13 -73.62   894    1
+# 
+# Samples were drawn using NUTS(diag_e) at Thu Jun 28 23:45:49 2018.
+# For each parameter, n_eff is a crude measure of effective sample size,
+# and Rhat is the potential scale reduction factor on split chains
+# (at convergence, Rhat=1).
+```
+
+```r
+posterior2 = rstan::extract(fit2)
+```
+
+```r
+data_frame(x = x, y = y) %>% 
+  ggplot(aes(x = x, y = y)) +
+    geom_point() +
+    geom_abline(slope = lm1$coefficients[2], intercept = lm1$coefficients[1],
+                color = 'orange', linetype = 1) +
+    geom_abline(slope = mean(posterior2$beta), intercept = mean(posterior2$alpha),
+                color = 'steelblue', linetype = 1) +
+    ggtitle('시간에 따른 북극 빙하 면적의 변화 (stan 모형과 lm 모형 비교)') +
+    theme_minimal(base_family = 'Apple SD Gothic Neo')
+```
+
+![png](fig/intro_to_stan/output05.png)
+
+이번에는 무슨 일이 일어난걸까? 모형은 잘 학습된 것일까? 모형의 형태가 왜 이렇게 크게 바뀌었을까? 여러 가지 prior를 적용해보면서 학습된 결과가 어떻게 바뀌는지 살펴보자. 이러한 문제는 베이지안 모델링에서 종종 발생하는 이슈다. 사전분포의 폭이 매우 좁으면서 데이터와 잘 맞지 않는 경우, 데이터를 잘 설명하지 못하는 모델링 결과를 얻게 될 수 있다. 하지만 그렇다고 해서 informative prior를 사용하지 말라는 것은 아니다. 다만 주의해서 사용하면 된다.
