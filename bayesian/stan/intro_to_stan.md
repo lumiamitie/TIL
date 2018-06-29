@@ -361,3 +361,51 @@ data_frame(x = x, y = y) %>%
 ![png](fig/intro_to_stan/output05.png)
 
 이번에는 무슨 일이 일어난걸까? 모형은 잘 학습된 것일까? 모형의 형태가 왜 이렇게 크게 바뀌었을까? 여러 가지 prior를 적용해보면서 학습된 결과가 어떻게 바뀌는지 살펴보자. 이러한 문제는 베이지안 모델링에서 종종 발생하는 이슈다. 사전분포의 폭이 매우 좁으면서 데이터와 잘 맞지 않는 경우, 데이터를 잘 설명하지 못하는 모델링 결과를 얻게 될 수 있다. 하지만 그렇다고 해서 informative prior를 사용하지 말라는 것은 아니다. 다만 주의해서 사용하면 된다.
+
+## 6.2 잘 수렴되지 않은 경우
+
+모형을 50번의 iteration만 돌려보고 traceplot을 살펴보자
+
+```r
+fit_bad = stan(model_code = stan_model1, data = stan_data,
+           warmup = 25, iter = 50, chains = 4, cores = 2, thin = 1)
+```
+
+```r
+fit_bad
+
+# Inference for Stan model: 872286853a38ddaf5ac4af6d3d421883.
+# 4 chains, each with iter=50; warmup=25; thin=1; 
+# post-warmup draws per chain=25, total post-warmup draws=100.
+# 
+#         mean se_mean    sd   2.5%    25%    50%    75%  97.5% n_eff Rhat
+# alpha   5.23    1.24  3.75  -0.80   3.49   5.13   8.20  10.84     9 2.35
+# beta    0.22    0.05  0.14   0.00   0.11   0.22   0.32   0.49    10 2.01
+# sigma   4.00    0.64  1.90   1.33   2.36   3.88   5.13   7.77     9 2.16
+# lp__  -64.06    7.44 22.10 -91.93 -78.18 -70.07 -49.71 -22.59     9 2.39
+# 
+# Samples were drawn using NUTS(diag_e) at Fri Jun 29 18:05:45 2018.
+# For each parameter, n_eff is a crude measure of effective sample size,
+# and Rhat is the potential scale reduction factor on split chains 
+# (at convergence, Rhat=1).
+```
+
+```r
+posterior_bad = rstan::extract(fit_bad)
+```
+
+```r
+as_data_frame(posterior_bad) %>% 
+  mutate(index = row_number()) %>% 
+  ggplot(aes(x = index, y = alpha)) +
+    geom_line() +
+    theme_minimal(base_family = 'Apple SD Gothic Neo')
+```
+
+![png](fig/intro_to_stan/output06.png)
+
+이렇게 모델을 학습시킬 경우 warmup 구간이 지나서 Divergent Transition이 발생할 수도 있다. 이것은 모형이 잘못 설정되었거나, 샘플러가 전체 사후분포의 샘플을 추출하는데 실패한 것일 수 있다 (혹은 둘다!!). 어쨌든 이러한 증상은 모형에 문제가 있다는 것을 의미한다. 
+
+Divergent Transition 관련해서는 다음 Stan 문서를 참고하자 [링크](http://mc-stan.org/misc/warnings.html#divergent-transitions-after-warmup)
+
+## 6.3 파라미터 요약
