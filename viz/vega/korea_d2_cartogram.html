@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Cartogram : D2 region</title>
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/vega-tooltip@0.5/build/vega-tooltip.min.css">
+    <style>
+      .bg h1 {
+        font-family: "Apple SD Gothic Neo";
+        font-weight: 300;
+      }
+    </style>
+</head>
+<body>
+    <h1>시군구 지역 카토그램</h1>
+    <div id="view"></div>
+    <script src="https://vega.github.io/vega/vega.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vega-tooltip@0.5"></script>
+</body>
+<script>
+  var data = [
+    {"region_d2":"unknown","user_cnt":4133,"code":"unknown"},
+    {"region_d2":"강원도 강릉시","user_cnt":857,"code":"32030"},
+    {"region_d2":"강원도 고성군","user_cnt":59,"code":"32400"},
+    {"region_d2":"강원도 동해시","user_cnt":234,"code":"32040"},
+    {"region_d2":"강원도 삼척시","user_cnt":201,"code":"32070"},
+    {"region_d2":"강원도 속초시","user_cnt":512,"code":"32060"},
+    {"region_d2":"강원도 양구군","user_cnt":40,"code":"32380"},
+    {"region_d2":"강원도 양양군","user_cnt":46,"code":"32410"},
+    {"region_d2":"강원도 영월군","user_cnt":47,"code":"32330"},
+    {"region_d2":"강원도 원주시","user_cnt":1435,"code":"32020"},
+    {"region_d2":"강원도 인제군","user_cnt":76,"code":"32390"},
+    {"region_d2":"강원도 정선군","user_cnt":76,"code":"32350"},
+    {"region_d2":"강원도 철원군","user_cnt":115,"code":"32360"},
+    {"region_d2":"강원도 춘천시","user_cnt":1398,"code":"32010"},
+    {"region_d2":"강원도 태백시","user_cnt":98,"code":"32050"},
+    {"region_d2":"강원도 평창군","user_cnt":82,"code":"32340"},
+    {"region_d2":"강원도 홍천군","user_cnt":141,"code":"32310"},
+    {"region_d2":"강원도 화천군","user_cnt":77,"code":"32370"},
+    {"region_d2":"강원도 횡성군","user_cnt":50,"code":"32320"},
+    {"region_d2":"경기도 가평군","user_cnt":189,"code":"31370"},
+    {"region_d2":"경기도 고양시","user_cnt":4400,"code":"31101"},
+    {"region_d2":"경기도 고양시","user_cnt":4400,"code":"31103"},
+    {"region_d2":"경기도 고양시","user_cnt":4400,"code":"31104"},
+    {"region_d2":"경기도 과천시","user_cnt":236,"code":"31110"},
+    {"region_d2":"경기도 광명시","user_cnt":1244,"code":"31060"},
+    {"region_d2":"경기도 광주시","user_cnt":1291,"code":"31250"},
+    {"region_d2":"경기도 구리시","user_cnt":745,"code":"31120"},
+    {"region_d2":"경기도 군포시","user_cnt":1136,"code":"31160"},
+    {"region_d2":"경기도 김포시","user_cnt":1487,"code":"31230"},
+    {"region_d2":"경기도 남양주시","user_cnt":2125,"code":"31130"},
+    {"region_d2":"경기도 동두천시","user_cnt":274,"code":"31080"},
+    {"region_d2":"경기도 부천시","user_cnt":4323,"code":"31051"},
+    {"region_d2":"경기도 부천시","user_cnt":4323,"code":"31052"},
+    {"region_d2":"경기도 부천시","user_cnt":4323,"code":"31053"},
+    {"region_d2":"경기도 성남시","user_cnt":4681,"code":"31021"},
+    {"region_d2":"경기도 성남시","user_cnt":4681,"code":"31022"},
+    {"region_d2":"경기도 성남시","user_cnt":4681,"code":"31023"},
+    {"region_d2":"경기도 수원시","user_cnt":5416,"code":"31011"},
+    {"region_d2":"경기도 수원시","user_cnt":5416,"code":"31012"},
+    {"region_d2":"경기도 수원시","user_cnt":5416,"code":"31013"},
+    {"region_d2":"경기도 수원시","user_cnt":5416,"code":"31014"},
+    {"region_d2":"경기도 시흥시","user_cnt":1657,"code":"31150"},
+    {"region_d2":"경기도 안산시","user_cnt":2631,"code":"31091"},
+    {"region_d2":"경기도 안산시","user_cnt":2631,"code":"31092"},
+    {"region_d2":"경기도 안성시","user_cnt":609,"code":"31220"},
+    {"region_d2":"경기도 안양시","user_cnt":2588,"code":"31041"},
+    {"region_d2":"경기도 안양시","user_cnt":2588,"code":"31042"},
+    {"region_d2":"경기도 양주시","user_cnt":659,"code":"31260"},
+    {"region_d2":"경기도 양평군","user_cnt":271,"code":"31380"},
+    {"region_d2":"경기도 여주시","user_cnt":310,"code":"31280"},
+    {"region_d2":"경기도 연천군","user_cnt":83,"code":"31350"},
+    {"region_d2":"경기도 오산시","user_cnt":839,"code":"31140"},
+    {"region_d2":"경기도 용인시","user_cnt":4369,"code":"31191"},
+    {"region_d2":"경기도 용인시","user_cnt":4369,"code":"31192"},
+    {"region_d2":"경기도 용인시","user_cnt":4369,"code":"31193"},
+    {"region_d2":"경기도 의왕시","user_cnt":552,"code":"31170"},
+    {"region_d2":"경기도 의정부시","user_cnt":1686,"code":"31030"},
+    {"region_d2":"경기도 이천시","user_cnt":840,"code":"31210"},
+    {"region_d2":"경기도 파주시","user_cnt":2048,"code":"31200"},
+    {"region_d2":"경기도 평택시","user_cnt":1765,"code":"31070"},
+    {"region_d2":"경기도 포천시","user_cnt":461,"code":"31270"},
+    {"region_d2":"경기도 하남시","user_cnt":882,"code":"31180"},
+    {"region_d2":"경기도 화성시","user_cnt":3836,"code":"31240"},
+    {"region_d2":"경상남도 거제시","user_cnt":704,"code":"38090"},
+    {"region_d2":"경상남도 거창군","user_cnt":123,"code":"38390"},
+    {"region_d2":"경상남도 고성군","user_cnt":53,"code":"38340"},
+    {"region_d2":"경상남도 김해시","user_cnt":1646,"code":"38070"},
+    {"region_d2":"경상남도 남해군","user_cnt":65,"code":"38350"},
+    {"region_d2":"경상남도 밀양시","user_cnt":174,"code":"38080"},
+    {"region_d2":"경상남도 사천시","user_cnt":219,"code":"38060"},
+    {"region_d2":"경상남도 산청군","user_cnt":38,"code":"38370"},
+    {"region_d2":"경상남도 양산시","user_cnt":1081,"code":"38100"},
+    {"region_d2":"경상남도 의령군","user_cnt":24,"code":"38310"},
+    {"region_d2":"경상남도 진주시","user_cnt":1205,"code":"38030"},
+    {"region_d2":"경상남도 창녕군","user_cnt":88,"code":"38330"},
+    {"region_d2":"경상남도 창원시","user_cnt":2928,"code":"38111"},
+    {"region_d2":"경상남도 창원시","user_cnt":2928,"code":"38112"},
+    {"region_d2":"경상남도 창원시","user_cnt":2928,"code":"38113"},
+    {"region_d2":"경상남도 창원시","user_cnt":2928,"code":"38114"},
+    {"region_d2":"경상남도 창원시","user_cnt":2928,"code":"38115"},
+    {"region_d2":"경상남도 통영시","user_cnt":274,"code":"38050"},
+    {"region_d2":"경상남도 하동군","user_cnt":44,"code":"38360"},
+    {"region_d2":"경상남도 함안군","user_cnt":99,"code":"38320"},
+    {"region_d2":"경상남도 함양군","user_cnt":52,"code":"38380"},
+    {"region_d2":"경상남도 합천군","user_cnt":51,"code":"38400"},
+    {"region_d2":"경상북도 경산시","user_cnt":1298,"code":"37100"},
+    {"region_d2":"경상북도 경주시","user_cnt":752,"code":"37020"},
+    {"region_d2":"경상북도 고령군","user_cnt":55,"code":"37370"},
+    {"region_d2":"경상북도 구미시","user_cnt":1415,"code":"37050"},
+    {"region_d2":"경상북도 군위군","user_cnt":25,"code":"37310"},
+    {"region_d2":"경상북도 김천시","user_cnt":371,"code":"37030"},
+    {"region_d2":"경상북도 문경시","user_cnt":93,"code":"37090"},
+    {"region_d2":"경상북도 봉화군","user_cnt":50,"code":"37410"},
+    {"region_d2":"경상북도 상주시","user_cnt":179,"code":"37080"},
+    {"region_d2":"경상북도 성주군","user_cnt":54,"code":"37380"},
+    {"region_d2":"경상북도 안동시","user_cnt":502,"code":"37040"},
+    {"region_d2":"경상북도 영덕군","user_cnt":57,"code":"37350"},
+    {"region_d2":"경상북도 영양군","user_cnt":10,"code":"37340"},
+    {"region_d2":"경상북도 영주시","user_cnt":252,"code":"37060"},
+    {"region_d2":"경상북도 영천시","user_cnt":169,"code":"37070"},
+    {"region_d2":"경상북도 예천군","user_cnt":71,"code":"37400"},
+    {"region_d2":"경상북도 울릉군","user_cnt":7,"code":"37430"},
+    {"region_d2":"경상북도 울진군","user_cnt":107,"code":"37420"},
+    {"region_d2":"경상북도 의성군","user_cnt":49,"code":"37320"},
+    {"region_d2":"경상북도 청도군","user_cnt":42,"code":"37360"},
+    {"region_d2":"경상북도 청송군","user_cnt":30,"code":"37330"},
+    {"region_d2":"경상북도 칠곡군","user_cnt":213,"code":"37390"},
+    {"region_d2":"경상북도 포항시","user_cnt":1416,"code":"37011"},
+    {"region_d2":"경상북도 포항시","user_cnt":1416,"code":"37012"},
+    {"region_d2":"광주광역시 광산구","user_cnt":1437,"code":"24050"},
+    {"region_d2":"광주광역시 남구","user_cnt":606,"code":"24030"},
+    {"region_d2":"광주광역시 동구","user_cnt":456,"code":"24010"},
+    {"region_d2":"광주광역시 북구","user_cnt":1594,"code":"24040"},
+    {"region_d2":"광주광역시 서구","user_cnt":1058,"code":"24020"},
+    {"region_d2":"대구광역시 남구","user_cnt":490,"code":"22040"},
+    {"region_d2":"대구광역시 달서구","user_cnt":2087,"code":"22070"},
+    {"region_d2":"대구광역시 달성군","user_cnt":621,"code":"22310"},
+    {"region_d2":"대구광역시 동구","user_cnt":1013,"code":"22020"},
+    {"region_d2":"대구광역시 북구","user_cnt":1650,"code":"22050"},
+    {"region_d2":"대구광역시 서구","user_cnt":441,"code":"22030"},
+    {"region_d2":"대구광역시 수성구","user_cnt":1423,"code":"22060"},
+    {"region_d2":"대구광역시 중구","user_cnt":559,"code":"22010"},
+    {"region_d2":"대전광역시 대덕구","user_cnt":557,"code":"25050"},
+    {"region_d2":"대전광역시 동구","user_cnt":906,"code":"25010"},
+    {"region_d2":"대전광역시 서구","user_cnt":2199,"code":"25030"},
+    {"region_d2":"대전광역시 유성구","user_cnt":2103,"code":"25040"},
+    {"region_d2":"대전광역시 중구","user_cnt":852,"code":"25020"},
+    {"region_d2":"부산광역시 강서구","user_cnt":446,"code":"21120"},
+    {"region_d2":"부산광역시 금정구","user_cnt":935,"code":"21110"},
+    {"region_d2":"부산광역시 기장군","user_cnt":400,"code":"21310"},
+    {"region_d2":"부산광역시 남구","user_cnt":985,"code":"21070"},
+    {"region_d2":"부산광역시 동구","user_cnt":240,"code":"21030"},
+    {"region_d2":"부산광역시 동래구","user_cnt":845,"code":"21060"},
+    {"region_d2":"부산광역시 부산진구","user_cnt":1612,"code":"21050"},
+    {"region_d2":"부산광역시 북구","user_cnt":865,"code":"21080"},
+    {"region_d2":"부산광역시 사상구","user_cnt":630,"code":"21150"},
+    {"region_d2":"부산광역시 사하구","user_cnt":1038,"code":"21100"},
+    {"region_d2":"부산광역시 서구","user_cnt":266,"code":"21020"},
+    {"region_d2":"부산광역시 수영구","user_cnt":553,"code":"21140"},
+    {"region_d2":"부산광역시 연제구","user_cnt":658,"code":"21130"},
+    {"region_d2":"부산광역시 영도구","user_cnt":303,"code":"21040"},
+    {"region_d2":"부산광역시 중구","user_cnt":288,"code":"21010"},
+    {"region_d2":"부산광역시 해운대구","user_cnt":1371,"code":"21090"},
+    {"region_d2":"서울특별시 강남구","user_cnt":4435,"code":"11230"},
+    {"region_d2":"서울특별시 강동구","user_cnt":1805,"code":"11250"},
+    {"region_d2":"서울특별시 강북구","user_cnt":1172,"code":"11090"},
+    {"region_d2":"서울특별시 강서구","user_cnt":3094,"code":"11160"},
+    {"region_d2":"서울특별시 관악구","user_cnt":3380,"code":"11210"},
+    {"region_d2":"서울특별시 광진구","user_cnt":1997,"code":"11050"},
+    {"region_d2":"서울특별시 구로구","user_cnt":1805,"code":"11170"},
+    {"region_d2":"서울특별시 금천구","user_cnt":1046,"code":"11180"},
+    {"region_d2":"서울특별시 노원구","user_cnt":2454,"code":"11110"},
+    {"region_d2":"서울특별시 도봉구","user_cnt":1229,"code":"11100"},
+    {"region_d2":"서울특별시 동대문구","user_cnt":1895,"code":"11060"},
+    {"region_d2":"서울특별시 동작구","user_cnt":2344,"code":"11200"},
+    {"region_d2":"서울특별시 마포구","user_cnt":2870,"code":"11140"},
+    {"region_d2":"서울특별시 서대문구","user_cnt":1895,"code":"11130"},
+    {"region_d2":"서울특별시 서초구","user_cnt":2786,"code":"11220"},
+    {"region_d2":"서울특별시 성동구","user_cnt":1719,"code":"11040"},
+    {"region_d2":"서울특별시 성북구","user_cnt":2403,"code":"11080"},
+    {"region_d2":"서울특별시 송파구","user_cnt":3896,"code":"11240"},
+    {"region_d2":"서울특별시 양천구","user_cnt":1850,"code":"11150"},
+    {"region_d2":"서울특별시 영등포구","user_cnt":2435,"code":"11190"},
+    {"region_d2":"서울특별시 용산구","user_cnt":1466,"code":"11030"},
+    {"region_d2":"서울특별시 은평구","user_cnt":2040,"code":"11120"},
+    {"region_d2":"서울특별시 종로구","user_cnt":1172,"code":"11010"},
+    {"region_d2":"서울특별시 중구","user_cnt":1622,"code":"11020"},
+    {"region_d2":"서울특별시 중랑구","user_cnt":1556,"code":"11070"},
+    {"region_d2":"세종특별자치시 ","user_cnt":1198,"code":"unknown"},
+    {"region_d2":"울산광역시 남구","user_cnt":1149,"code":"26020"},
+    {"region_d2":"울산광역시 동구","user_cnt":390,"code":"26030"},
+    {"region_d2":"울산광역시 북구","user_cnt":513,"code":"26040"},
+    {"region_d2":"울산광역시 울주군","user_cnt":541,"code":"26310"},
+    {"region_d2":"울산광역시 중구","user_cnt":573,"code":"26010"},
+    {"region_d2":"인천광역시 강화군","user_cnt":101,"code":"23310"},
+    {"region_d2":"인천광역시 계양구","user_cnt":1070,"code":"23070"},
+    {"region_d2":"인천광역시 남구","user_cnt":1606,"code":"23030"},
+    {"region_d2":"인천광역시 남동구","user_cnt":2079,"code":"23050"},
+    {"region_d2":"인천광역시 동구","user_cnt":148,"code":"23020"},
+    {"region_d2":"인천광역시 부평구","user_cnt":2109,"code":"23060"},
+    {"region_d2":"인천광역시 서구","user_cnt":1990,"code":"23080"},
+    {"region_d2":"인천광역시 연수구","user_cnt":1649,"code":"23040"},
+    {"region_d2":"인천광역시 옹진군","user_cnt":32,"code":"23320"},
+    {"region_d2":"인천광역시 중구","user_cnt":756,"code":"23010"},
+    {"region_d2":"전라남도 강진군","user_cnt":40,"code":"36390"},
+    {"region_d2":"전라남도 고흥군","user_cnt":42,"code":"36350"},
+    {"region_d2":"전라남도 곡성군","user_cnt":33,"code":"36320"},
+    {"region_d2":"전라남도 광양시","user_cnt":298,"code":"36060"},
+    {"region_d2":"전라남도 구례군","user_cnt":27,"code":"36330"},
+    {"region_d2":"전라남도 나주시","user_cnt":266,"code":"36040"},
+    {"region_d2":"전라남도 담양군","user_cnt":65,"code":"36310"},
+    {"region_d2":"전라남도 목포시","user_cnt":645,"code":"36010"},
+    {"region_d2":"전라남도 무안군","user_cnt":167,"code":"36420"},
+    {"region_d2":"전라남도 보성군","user_cnt":24,"code":"36360"},
+    {"region_d2":"전라남도 순천시","user_cnt":788,"code":"36030"},
+    {"region_d2":"전라남도 신안군","user_cnt":20,"code":"36480"},
+    {"region_d2":"전라남도 여수시","user_cnt":733,"code":"36020"},
+    {"region_d2":"전라남도 영광군","user_cnt":65,"code":"36440"},
+    {"region_d2":"전라남도 영암군","user_cnt":74,"code":"36410"},
+    {"region_d2":"전라남도 완도군","user_cnt":43,"code":"36460"},
+    {"region_d2":"전라남도 장성군","user_cnt":58,"code":"36450"},
+    {"region_d2":"전라남도 장흥군","user_cnt":29,"code":"36380"},
+    {"region_d2":"전라남도 진도군","user_cnt":38,"code":"36470"},
+    {"region_d2":"전라남도 함평군","user_cnt":29,"code":"36430"},
+    {"region_d2":"전라남도 해남군","user_cnt":76,"code":"36400"},
+    {"region_d2":"전라남도 화순군","user_cnt":113,"code":"36370"},
+    {"region_d2":"전라북도 고창군","user_cnt":75,"code":"35370"},
+    {"region_d2":"전라북도 군산시","user_cnt":788,"code":"35020"},
+    {"region_d2":"전라북도 김제시","user_cnt":134,"code":"35060"},
+    {"region_d2":"전라북도 남원시","user_cnt":118,"code":"35050"},
+    {"region_d2":"전라북도 무주군","user_cnt":28,"code":"35330"},
+    {"region_d2":"전라북도 부안군","user_cnt":64,"code":"35380"},
+    {"region_d2":"전라북도 순창군","user_cnt":14,"code":"35360"},
+    {"region_d2":"전라북도 완주군","user_cnt":180,"code":"35310"},
+    {"region_d2":"전라북도 익산시","user_cnt":927,"code":"35030"},
+    {"region_d2":"전라북도 임실군","user_cnt":20,"code":"35350"},
+    {"region_d2":"전라북도 장수군","user_cnt":26,"code":"35340"},
+    {"region_d2":"전라북도 전주시","user_cnt":2589,"code":"35011"},
+    {"region_d2":"전라북도 전주시","user_cnt":2589,"code":"35012"},
+    {"region_d2":"전라북도 정읍시","user_cnt":156,"code":"35040"},
+    {"region_d2":"전라북도 진안군","user_cnt":19,"code":"35320"},
+    {"region_d2":"제주특별자치도 서귀포시","user_cnt":459,"code":"39020"},
+    {"region_d2":"제주특별자치도 제주시","user_cnt":2022,"code":"39010"},
+    {"region_d2":"충청남도 계룡시","user_cnt":132,"code":"34070"},
+    {"region_d2":"충청남도 공주시","user_cnt":381,"code":"34020"},
+    {"region_d2":"충청남도 금산군","user_cnt":121,"code":"34310"},
+    {"region_d2":"충청남도 논산시","user_cnt":303,"code":"34060"},
+    {"region_d2":"충청남도 당진시","user_cnt":428,"code":"34080"},
+    {"region_d2":"충청남도 보령시","user_cnt":172,"code":"34030"},
+    {"region_d2":"충청남도 부여군","user_cnt":77,"code":"34330"},
+    {"region_d2":"충청남도 서산시","user_cnt":567,"code":"34050"},
+    {"region_d2":"충청남도 서천군","user_cnt":67,"code":"34340"},
+    {"region_d2":"충청남도 아산시","user_cnt":1244,"code":"34040"},
+    {"region_d2":"충청남도 예산군","user_cnt":142,"code":"34370"},
+    {"region_d2":"충청남도 천안시","user_cnt":3671,"code":"34011"},
+    {"region_d2":"충청남도 천안시","user_cnt":3671,"code":"34012"},
+    {"region_d2":"충청남도 청양군","user_cnt":47,"code":"34350"},
+    {"region_d2":"충청남도 태안군","user_cnt":111,"code":"34380"},
+    {"region_d2":"충청남도 홍성군","user_cnt":271,"code":"34360"},
+    {"region_d2":"충청북도 괴산군","user_cnt":49,"code":"33360"},
+    {"region_d2":"충청북도 단양군","user_cnt":43,"code":"33380"},
+    {"region_d2":"충청북도 보은군","user_cnt":30,"code":"33320"},
+    {"region_d2":"충청북도 영동군","user_cnt":99,"code":"33340"},
+    {"region_d2":"충청북도 옥천군","user_cnt":88,"code":"33330"},
+    {"region_d2":"충청북도 음성군","user_cnt":217,"code":"33370"},
+    {"region_d2":"충청북도 제천시","user_cnt":359,"code":"33030"},
+    {"region_d2":"충청북도 증평군","user_cnt":113,"code":"33390"},
+    {"region_d2":"충청북도 진천군","user_cnt":188,"code":"33350"},
+    {"region_d2":"충청북도 청주시","user_cnt":3223,"code":"33011"},
+    {"region_d2":"충청북도 청주시","user_cnt":3223,"code":"33012"},
+    {"region_d2":"충청북도 청주시","user_cnt":3223,"code":"33310"},
+    {"region_d2":"충청북도 충주시","user_cnt":713,"code":"33020"}
+  ];
+
+  var choropleth_spec = {
+    "$schema": "https://vega.github.io/schema/vega/v4.json",
+    "width": 500,
+    "height": 500,
+    "autosize": "none",
+    "data": [
+      {
+        "name": "provinces",
+        "url": "https://raw.githubusercontent.com/southkorea/southkorea-maps/master/kostat/2013/json/skorea_municipalities_topo_simple.json",
+        "format": {
+          "type": "topojson", 
+          "feature": "skorea_municipalities_geo"
+        }
+      },
+      {
+        "name": "data",
+        "values": data,
+        "transform": [
+          {"type": "formula", "as": "logvalue", "expr": "log(datum.user_cnt)"} ,
+          {
+              "type": "lookup", "from": "provinces", "key": "properties.code", 
+              "fields": ["code"], 
+              "as": ["geo"]
+          },
+          {
+            "type": "formula", "as": "centroid",
+            "expr": "geoCentroid('projection', datum.geo)"
+          },
+          {
+            "type": "formula", "as": "province",
+            "expr": "replace(datum.region_d2, / .+/, '')"
+          }
+        ]
+      },
+      {
+        "name": "valuerange",
+        "source": "data",
+        "transform": [
+          {"type": "extent", "field": "logvalue", "signal": "valuerange"}
+        ]
+      }
+    ],
+
+    "projections": [
+      {
+        "name": "projection",
+        "type": "mercator",
+        "scale": 3500,
+        "center": [132, 35.5]
+      }
+    ],
+
+    "scales": [
+      {
+        "name": "size",
+        "domain": {"data": "data", "field": "user_cnt"},
+        "zero": false,
+        "range": [80, 300]
+      },
+      {
+        "name": "color",
+        "type": "ordinal",
+        "domain": {"data": "data", "field": "province"},
+        "range": {"scheme": "set2"}
+      }
+    ],
+    
+    "marks": [
+      {
+        "name": "circles",
+        "type": "symbol",
+        "from": {"data": "data"},
+        "encode": {
+          "enter": {
+            "size": {"scale": "size", "field": "user_cnt"},
+            "fill": {"scale": "color", "field": "province"},
+            "stroke": {"value": "white"},
+            "strokeWidth": {"value": 1},
+            "x": {"field": "centroid[0]"},
+            "y": {"field": "centroid[1]"}
+          }
+        },
+        "transform": [
+          {
+            "type": "force",
+            "static": true,
+            "forces": [
+              {"force": "collide", "radius": {"expr": "1 + sqrt(datum.size)/2"}},
+              {"force": "x", "x": "datum.centroid[0]"},
+              {"force": "y", "y": "datum.centroid[1]"}
+            ]
+          }
+        ]
+      }
+    ]
+  }
+
+  // embeding 및 다른 옵션 (렌더링 선택, export 등) 을 사용하려면 vegaEmbed를 사용
+  // vegaEmbed('#view', choropleth_spec);
+
+  // 디버깅 및 streaming 기능을 사용하려면 Vega View API 를 사용
+  var view = new vega.View(vega.parse(choropleth_spec))
+          .renderer('canvas')  // set renderer (canvas or svg)
+          .initialize('#view') // initialize view within parent DOM container
+          .hover()             // enable hover encode set processing
+          .run();
+
+
+  vegaTooltip.vega(view, {
+    fields: [
+      {
+        field: "region_d2",
+        title: "지역"
+      },
+      {
+        field: "user_cnt",
+        title: "구매자수"
+      }
+    ]
+  })
+</script>
+</html>
