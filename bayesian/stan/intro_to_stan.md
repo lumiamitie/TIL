@@ -409,3 +409,137 @@ as_data_frame(posterior_bad) %>%
 Divergent Transition 관련해서는 다음 Stan 문서를 참고하자 [링크](http://mc-stan.org/misc/warnings.html#divergent-transitions-after-warmup)
 
 ## 6.3 파라미터 요약
+
+샘플링한 사후분포를 통해 파라미터의 요약된 수치를 파악할 수 있다. 우리의 결과를 베이지안이 아닌 선형 모형과도 비교해보자.
+
+```r
+as_data_frame(posterior) %>% 
+  select(alpha, beta, sigma) %>% 
+  gather(key = 'parameter', value = 'posterior') %>% 
+  ggplot(aes(x = posterior)) +
+    geom_density() +
+    geom_vline(data = data_frame(parameter = c('alpha', 'beta', 'sigma'),
+                                 value = c(lm_alpha, lm_beta, lm_sigma)),
+               aes(xintercept = value),
+               color = 'steelblue', linetype = 2) +
+    facet_wrap(~ parameter, scales = 'free', ncol = 3) +
+    ggtitle('Stan 모형에서 추출한 파라미터의 분포와 lm으로 학습한 결과 비교',
+            subtitle = '점선이 lm 모형의 결과물') +
+    theme_minimal(base_family = 'Apple SD Gothic Neo')
+```
+
+![png](fig/intro_to_stan/output07.png)
+
+사후확률분포로부터 파라미터가 특정 값보다 크거나 작을 확률을 직접 계산할 수 있다
+
+```r
+# Beta > 0 일 확률
+sum(posterior$beta > 0) / length(posterior$beta)
+# [1] 0
+
+# Beta > 0.2 일 확률
+sum(posterior$beta > 0.2) / length(posterior$beta)
+# [1] 0
+```
+
+## 6.4 진단을 위한 그래프 (rstan)
+
+posterior 값을 통해 직접 파악하는 대신 `rstan`에서 기본적으로 제공하는 편리한 도구들을 사용할 수 있다. 
+
+```r
+rstan::traceplot(fit)
+```
+
+![png](fig/intro_to_stan/output08.png)
+
+posterior의 density나 히스토그램을 확인할 수도 있다
+
+```r
+# Posterior Density
+rstan::stan_dens(fit)
+```
+
+![png](fig/intro_to_stan/output09.png)
+
+```r
+# Posterior Histogram
+rstan::stan_hist(fit)
+```
+
+![png](fig/intro_to_stan/output10.png)
+
+파라미터 추정치와 신용구간(Credible Interval)을 확인해 볼 수 있다. `beta`와 `sigma`의 95% 신용구간은 매우 좁기 때문에, 그래프에서는 거의 점으로 보인다. 
+
+```r
+plot(fit, show_density = FALSE, ci_level = 0.5, outer_level = 0.95)
+```
+
+![png](fig/intro_to_stan/output11.png)
+
+## 6.5 Posterior Predictive Check
+
+예측과 모형 검증을 위해, `Stan`에서는 매 iteration마다 각 데이터 포인트에 대한 예측값을 발생시킬 수 있다. 이러한 방식으로 모형과 데이터 생성과정에 대한 불확실성을 예측할 수 있다. `Generated Quantities` 블록을 통해 이러한 작업을 수행할 수 있다.
+
+```r
+stan_model2_gq = "
+  // Stan model for simple linear regression
+  
+  data {
+    int < lower = 1 > N; // Sample size
+    vector[N] x;         // Predictor
+    vector[N] y;        // Outcome
+  }
+  
+  parameters {
+    real alpha;             // Intercept
+    real beta;              // Slope (regression coefficients)
+    real <lower = 0> sigma; // Error SD
+  }
+  
+  model {
+    y ~ normal(x * beta + alpha, sigma);
+  }
+  
+  generated quantities {
+    real y_rep[N];
+
+    for (n in 1:N) {
+      y_rep[n] = normal_rng(x[n] * beta + alpha, sigma);
+    }
+  }"
+```
+
+`Generated Quantities` 블록에서는 함수의 벡터화가 지원되지 않는다. 따라서 반복문을 통해 작업해야 하는데, C++로 컴파일되기 때문에 속도는 상당히 빠르다. 데이터를 생성하는 함수는 일반적으로 모델 블록에서 사용하는 함수에 `_rng` 접미사를 붙인다.
+
+```r
+fit3 = stan(model_code = stan_model2_gq, data = stan_data,
+            iter = 1000, chains = 4, cores = 2, thin = 1)
+```
+
+이제 posterior로부터 `y_rep` 값을 추출해보자. `y_rep`를 다루는 방법은 여러 가지가 있다.
+
+```r
+y_rep = as.matrix(fit3, pars = 'y_rep')
+dim(y_rep)
+# [1] 2000   39
+```
+
+이제 `bayesplot` 라이브러리를 사용해서 posterior 예측결과를 시각화해보자. y값의 density와 posterior에서 200개를 추출한 값을 비교해보자.
+
+```r
+bayesplot::ppc_dens_overlay(y, y_rep[1:200, ])
+```
+
+![png](fig/intro_to_stan/output12.png)
+
+요약된 통계량을 비교하는데 사용할 수도 있다
+
+```r
+bayesplot::ppc_stat(y = y, yrep = y_rep, stat = 'mean')
+```
+
+![png](fig/intro_to_stan/output13.png)
+
+# 7. 문제에 답하기
+
+`Stan`으로 모델링하고 잘 수렴되었다는 것을 확인했다. 연구하려는 문제에 어떻게 답을 할 수 있을까? **북극의 빙하 면적이 시간에 따라 감소하고 있는가?** 우리가 작성한 `Stan` 모형은 어떤 답을 내리고 있는가?
