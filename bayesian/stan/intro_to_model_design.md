@@ -80,4 +80,4 @@ richness_toolik %>%
     theme_light()
 ```
 
-![png](fig/intro_to_stan/output01.png)
+![png](fig/intro_to_model_design/output01.png)
