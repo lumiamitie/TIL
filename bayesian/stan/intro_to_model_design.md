@@ -81,3 +81,38 @@ richness_toolik %>%
 ```
 
 ![png](fig/intro_to_model_design/output01.png)
+
+`Relative.Cover` 변수는 0부터 1 사이의 값으로 되어있으며, 0에 가까운 값으로 몰려있다. 이러한 특성은 모델링 과정에 반영할 수 있다.
+
+```r
+fltd_toolik_plants %>% 
+  ggplot(aes(x = Relative.Cover)) +
+    geom_histogram() +
+    theme_light()
+```
+
+![png](fig/intro_to_model_design/output02.png)
+
+## 4. 실험설계에 대해 살펴보자
+
+Toolik 데이터에는 다양한 시간대와 공간이 뒤섞여있다. 공간은 세 가지 위계가 있다. 각 site 안에는 여러 개의 block이 있고, 각 block에는 plot이 8개씩 존재한다. 시간대는 해당 식물종이 기록된 연도를 말하며, 4년 단위로 구분되어 있다.
+
+어떤 것들을 더 고민해야 할까??
+
+- **Spatial Autocorrelation** : 공간의 자기상관
+    - 가까운 지역과는 식생, 온도 등 환경이 비슷할 것이다
+- **Temporal Autocorrelation** : 시간의 자기상관
+    - 2000년의 지표와 2001년의 지표가 비슷할 것이다
+
+## 5. 모형을 구성해보자
+
+> 종풍부도가 시간에 따라 어떻게 변화하는가?
+
+여기서 독립변수와 종속변수가 무엇일까? 우리의 모형을 말로 표현하면 다음과 같다.
+
+**종풍부도는 시간에 대한 함수이다**
+
+R 코드로는 다음과 같이 표현할 수 있다: `Richness ~ Time`
+
+여기서 종속변수는 `Richness` 이고, `Time`이 독립변수이다. 이것이 우리의 기본 모형이다. 더 고려할 만한 것이 있을까? 다른 변수를 고려하지 않고 시간에 대한 함수로만 정의한다면 어떻게 될까??
+
