@@ -182,4 +182,4 @@ summary(plant_m)
 plot(plant_m)
 ```
 
-![png](fig/intro_to_model_design/output02.png)
+![png](fig/intro_to_model_design/output03.png)
