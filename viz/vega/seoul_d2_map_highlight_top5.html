@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Seoul : D2 region with top5 highlighted</title>
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/vega-tooltip@0.5/build/vega-tooltip.min.css">
+</head>
+<body>
+    <div class="bg">
+        <h2>상위 5개 구에 하이라이트</h2>
+        <div id="view"></div>
+    </div>
+    <script src="https://vega.github.io/vega/vega.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vega-tooltip@0.5"></script>
+</body>
+<script>
+    var data = [
+      {"region_d2":"서울특별시 강남구","user_cnt":4435,"code":"11230"},
+      {"region_d2":"서울특별시 강동구","user_cnt":1805,"code":"11250"},
+      {"region_d2":"서울특별시 강북구","user_cnt":1172,"code":"11090"},
+      {"region_d2":"서울특별시 강서구","user_cnt":3094,"code":"11160"},
+      {"region_d2":"서울특별시 관악구","user_cnt":3380,"code":"11210"},
+      {"region_d2":"서울특별시 광진구","user_cnt":1997,"code":"11050"},
+      {"region_d2":"서울특별시 구로구","user_cnt":1805,"code":"11170"},
+      {"region_d2":"서울특별시 금천구","user_cnt":1046,"code":"11180"},
+      {"region_d2":"서울특별시 노원구","user_cnt":2454,"code":"11110"},
+      {"region_d2":"서울특별시 도봉구","user_cnt":1229,"code":"11100"},
+      {"region_d2":"서울특별시 동대문구","user_cnt":1895,"code":"11060"},
+      {"region_d2":"서울특별시 동작구","user_cnt":2344,"code":"11200"},
+      {"region_d2":"서울특별시 마포구","user_cnt":2870,"code":"11140"},
+      {"region_d2":"서울특별시 서대문구","user_cnt":1895,"code":"11130"},
+      {"region_d2":"서울특별시 서초구","user_cnt":2786,"code":"11220"},
+      {"region_d2":"서울특별시 성동구","user_cnt":1719,"code":"11040"},
+      {"region_d2":"서울특별시 성북구","user_cnt":2403,"code":"11080"},
+      {"region_d2":"서울특별시 송파구","user_cnt":3896,"code":"11240"},
+      {"region_d2":"서울특별시 양천구","user_cnt":1850,"code":"11150"},
+      {"region_d2":"서울특별시 영등포구","user_cnt":2435,"code":"11190"},
+      {"region_d2":"서울특별시 용산구","user_cnt":1466,"code":"11030"},
+      {"region_d2":"서울특별시 은평구","user_cnt":2040,"code":"11120"},
+      {"region_d2":"서울특별시 종로구","user_cnt":1172,"code":"11010"},
+      {"region_d2":"서울특별시 중구","user_cnt":1622,"code":"11020"},
+      {"region_d2":"서울특별시 중랑구","user_cnt":1556,"code":"11070"}
+    ];
+
+    var choropleth_spec = {
+      // "$schema": "https://vega.github.io/schema/vega/v3.json",
+      "width": 500,
+      "height": 500,
+      "autosize": "none",
+      "data": [
+        {
+          "name": "data",
+          "values": data,
+          "transform": [
+            {
+              "type": "window", 
+              "sort": {"field": "user_cnt", "order": "descending"},
+              "ops": ["rank"],
+              "as": ["rank"]
+            },
+            {"type": "formula", "as": "is_top5", "expr": "datum.rank<=5"}
+          ]
+        },
+        {
+          "name": "provinces",
+          "url": "https://raw.githubusercontent.com/southkorea/seoul-maps/master/kostat/2013/json/seoul_municipalities_topo.json",
+          "format": {"type": "topojson", "feature": "seoul_municipalities_geo"},
+          "transform": [
+             {
+               "type": "lookup", "from": "data", "key": "code", 
+               "fields": ["properties.code"], 
+               "values": ["region_d2", "user_cnt", "is_top5"]
+             }
+           ]
+         }
+      ],
+      
+      "projections": [
+        {
+          "name": "projection",
+          "type": "mercator",
+          "scale": 55000,
+          "center": [127.25, 37.54]
+        }
+      ],
+      
+      "scales": [
+        {
+          "name": "color",
+          "type": "ordinal",
+          "domain": {"data": "data", "field": "is_top5"},
+          "range": ["#1DCDBC", "#D7DDE5"]
+        }
+      ],
+      
+      "marks": [
+        {
+          "type": "shape",
+          "from": {"data": "provinces"},
+          "encode": {
+            "enter": { "fill": {"scale": "color", "field": "is_top5"},
+                       "stroke": {"value": "#ffffff"},
+                       "strokeWidth": {"value": 0.5}
+                     },
+            "update": { "fill": {"scale": "color", "field": "is_top5"} },
+            "hover": { "fill": {"value": "#5F4B8B"} }
+          },
+          "transform": [
+            { "type": "geoshape", "projection": "projection" }
+          ]
+        }
+      ]
+    }
+
+    // embeding 및 다른 옵션 (렌더링 선택, export 등) 을 사용하려면 vegaEmbed를 사용
+    // vegaEmbed('#view', choropleth_spec);
+
+    // 디버깅 및 streaming 기능을 사용하려면 Vega View API 를 사용
+    var view = new vega.View(vega.parse(choropleth_spec))
+            .renderer('svg')  // set renderer (canvas or svg)
+            .initialize('#view') // initialize view within parent DOM container
+            .hover()             // enable hover encode set processing
+            .run();
+
+    vegaTooltip.vega(view, {
+      fields: [
+        {
+          field: "region_d2",
+          title: "지역"
+        },
+        {
+          field: "user_cnt",
+          title: "구매자수"
+        }
+      ]
+    })
+</script>
+</html>
