@@ -183,3 +183,110 @@ plot(plant_m)
 ```
 
 ![png](fig/intro_to_model_design/output03.png)
+
+# 8. lme4를 이용한 계층 모형
+
+계층 모형(hierarchical model)으로 이어지는 아이디어들을 살펴보았다. 이제 계층 구조를 모형에 포함시킬 때와 그렇지 않을 때 모형이 어떻게 달라지는지 살펴보자.
+
+먼저 `Site`를 랜덤 효과로 두고 모델링해보자. 이 모형은 시간에 따른 구분이나 Site 내에 블록들이 있고 그 밑에 plot이 존재한다는 사실은 반영하지 않는다.
+
+```r
+plant_m_plot = lme4::lmer(richness ~ I(Year-2007) + (1|Site), data = richness_toolik)
+summary(plant_m_plot)
+
+# Linear mixed model fit by REML ['lmerMod']
+# Formula: richness ~ I(Year - 2007) + (1 | Site)
+#    Data: richness_toolik
+# 
+# REML criterion at convergence: 1396.2
+# 
+# Scaled residuals: 
+#     Min      1Q  Median      3Q     Max 
+# -2.3420 -0.6082 -0.0869  0.6084  6.6857 
+# 
+# Random effects:
+#  Groups   Name        Variance Std.Dev.
+#  Site     (Intercept) 52.304   7.232   
+#  Residual              3.975   1.994   
+# Number of obs: 324, groups:  Site, 5
+# 
+# Fixed effects:
+#                Estimate Std. Error t value
+# (Intercept)     21.0066     3.2429   6.478
+# I(Year - 2007)  -0.5335     0.0914  -5.837
+# 
+# Correlation of Fixed Effects:
+#             (Intr)
+# I(Yer-2007) -0.060
+```
+
+`summary()` 함수를 통해 **효과 크기 (effect size)**를 확인할 수 있다. 이것이 우리 모형의 핵심적인 결과물이다. 우리가 확인하려는 변수들간의 관계가 얼마나 강한지 알 수 있다. 우리는 여전히 다양한 블럭과 플랏에 대해서는 고려하지 않고 있기 때문에, 점차 변수를 추가해보고 어떻게 변하는지 살펴보자.
+
+```r
+plant_m_plot2 = lme4::lmer(richness ~ I(Year-2007) + (1|Site/Block), 
+                           data = richness_toolik)
+summary(plant_m_plot2)
+
+# Linear mixed model fit by REML ['lmerMod']
+# Formula: richness ~ I(Year - 2007) + (1 | Site/Block)
+#    Data: richness_toolik
+# 
+# REML criterion at convergence: 1316.5
+# 
+# Scaled residuals: 
+#     Min      1Q  Median      3Q     Max 
+# -2.4835 -0.6368 -0.0059  0.6009  7.6346 
+# 
+# Random effects:
+#  Groups     Name        Variance Std.Dev.
+#  Block:Site (Intercept)  1.383   1.176   
+#  Site       (Intercept) 51.117   7.150   
+#  Residual                3.165   1.779   
+# Number of obs: 316, groups:  Block:Site, 17; Site, 5
+# 
+# Fixed effects:
+#                Estimate Std. Error t value
+# (Intercept)    21.12939    3.21752   6.567
+# I(Year - 2007) -0.56398    0.08215  -6.865
+# 
+# Correlation of Fixed Effects:
+#             (Intr)
+# I(Yer-2007) -0.055
+```
+
+모형이 바뀌면서 효과 크기가 얼마나 변했을까??
+
+```r
+plant_m_plot3 = lme4::lmer(richness ~ I(Year-2007) + (1|Site/Block/Plot), 
+                           data = richness_toolik)
+summary(plant_m_plot3)
+
+# Linear mixed model fit by REML ['lmerMod']
+# Formula: richness ~ I(Year - 2007) + (1 | Site/Block/Plot)
+#    Data: richness_toolik
+# 
+# REML criterion at convergence: 1316.4
+# 
+# Scaled residuals: 
+#     Min      1Q  Median      3Q     Max 
+# -2.4290 -0.6176 -0.0219  0.5812  7.4664 
+# 
+# Random effects:
+#  Groups            Name        Variance Std.Dev.
+#  Plot:(Block:Site) (Intercept)  0.1267  0.3559  
+#  Block:Site        (Intercept)  1.3796  1.1746  
+#  Site              (Intercept) 51.1215  7.1499  
+#  Residual                       3.0502  1.7465  
+# Number of obs: 316, groups:  Plot:(Block:Site), 136; Block:Site, 17; Site, 5
+# 
+# Fixed effects:
+#                Estimate Std. Error t value
+# (Intercept)    21.12750    3.21753   6.566
+# I(Year - 2007) -0.56322    0.08078  -6.973
+# 
+# Correlation of Fixed Effects:
+#             (Intr)
+# I(Yer-2007) -0.054
+```
+
+마지막 모형은 데이터의 계층 관계까지 고려한, 시간에 따른 종풍부도의 변화를 나타낸다. `sjPlot` 라이브러리를 이용해 결과물을 시각화해보자.
