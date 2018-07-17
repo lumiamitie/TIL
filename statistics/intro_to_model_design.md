@@ -307,3 +307,135 @@ summary(plant_m_plot3)
 
 ## 9. Random Slope vs Random Intercept in lme4
 
+기울기에 랜덤 효과를 주는 것과 절편에 랜덤 효과를 주는 것에 대해 고민해보자. 우리의 문제에서 보면, 지역에 따라서 기온이 미치는 영향이 다를 수 있다. 
+
+```r
+toolik_plants_add_richness = fltd_toolik_plants %>%
+  group_by(Year, Site, Block, Plot) %>%
+    mutate(Richness = length(unique(Species))) %>% 
+  ungroup
+
+plant_m_rs = lme4::lmer(Richness ~ Mean.Temp + (Mean.Temp|Site/Block/Plot) + (1|Year),
+                        data = toolik_plants_add_richness)
+
+summary(plant_m_rs)
+
+# Linear mixed model fit by REML ['lmerMod']
+# Formula: Richness ~ Mean.Temp + (Mean.Temp | Site/Block/Plot) + (1 | Year)
+#    Data: toolik_plants_add_richness
+# 
+# REML criterion at convergence: 49289.7
+# 
+# Scaled residuals: 
+#     Min      1Q  Median      3Q     Max 
+# -3.3222 -0.3419 -0.0009  0.4044  3.6812 
+# 
+# Random effects:
+#  Groups            Name        Variance  Std.Dev. Corr
+#  Plot:(Block:Site) (Intercept) 1390.7881 37.293       
+#                    Mean.Temp     19.0029  4.359   1.00
+#  Block:Site        (Intercept)  603.8728 24.574       
+#                    Mean.Temp      8.5023  2.916   1.00
+#  Site              (Intercept)  187.1437 13.680       
+#                    Mean.Temp      0.7072  0.841   1.00
+#  Year              (Intercept)    1.2553  1.120       
+#  Residual                         0.9370  0.968       
+# Number of obs: 17307, groups:  
+# Plot:(Block:Site), 136; Block:Site, 17; Site, 5; Year, 4
+# 
+# Fixed effects:
+#             Estimate Std. Error t value
+# (Intercept)  24.6852    14.1321   1.747
+# Mean.Temp     0.6277     1.5439   0.407
+# 
+# Correlation of Fixed Effects:
+#           (Intr)
+# Mean.Temp 0.979 
+# convergence code: 1
+# unable to evaluate scaled gradient
+# Model failed to converge: degenerate  Hessian with 3 negative eigenvalues
+```
+
+모형을 돌려보면 수렴이 되지 않았다는 에러메세지를 볼 수 있다. 수렴에 실패했기 때문에 결과를 신뢰할 수 없다. 모형이 너무 복잡해서 생긴 문제이므로 좀 더 단순화시켜서 다시 시도해보자. 
+
+```r
+plant_m_rs2 = lme4::lmer(Richness ~ Mean.Temp + (Mean.Temp|Plot) + (1|Year),
+                         data = toolik_plants_add_richness)
+
+summary(plant_m_rs2)
+
+# Linear mixed model fit by REML ['lmerMod']
+# Formula: Richness ~ Mean.Temp + (Mean.Temp | Plot) + (1 | Year)
+#    Data: toolik_plants_add_richness
+# 
+# REML criterion at convergence: 105005.1
+# 
+# Scaled residuals: 
+#     Min      1Q  Median      3Q     Max 
+# -2.2173 -0.6967 -0.0428  0.4089  4.7529 
+# 
+# Random effects:
+#  Groups   Name        Variance Std.Dev. Corr
+#  Plot     (Intercept) 16.0598  4.0075       
+#           Mean.Temp    0.2034  0.4509   0.99
+#  Year     (Intercept)  4.3122  2.0766       
+#  Residual             23.6222  4.8603       
+# Number of obs: 17492, groups:  Plot, 8; Year, 4
+# 
+# Fixed effects:
+#             Estimate Std. Error t value
+# (Intercept)   33.637     17.336   1.940
+# Mean.Temp      1.722      2.012   0.856
+# 
+# Correlation of Fixed Effects:
+#           (Intr)
+# Mean.Temp 0.998
+```
+
+이번에는 `Plot` 변수에 random intercept와 random slope만 부여해서 모형이 어떻게 구성되는지 살펴보자
+
+```r
+plant_m_rs3 = lme4::lmer(Richness ~ Mean.Temp + (Mean.Temp|Plot),
+                         data = toolik_plants_add_richness)
+summary(plant_m_rs3)
+# Linear mixed model fit by REML ['lmerMod']
+# Formula: Richness ~ Mean.Temp + (Mean.Temp | Plot)
+#    Data: toolik_plants_add_richness
+# 
+# REML criterion at convergence: 106785.6
+# 
+# Scaled residuals: 
+#     Min      1Q  Median      3Q     Max 
+# -1.8081 -0.6316 -0.2317  0.2867  4.8906 
+# 
+# Random effects:
+#  Groups   Name        Variance Std.Dev. Corr
+#  Plot     (Intercept) 14.5678  3.8168       
+#           Mean.Temp    0.1879  0.4334   0.99
+#  Residual             26.1774  5.1164       
+# Number of obs: 17492, groups:  Plot, 8
+# 
+# Fixed effects:
+#             Estimate Std. Error t value
+# (Intercept)  39.3438     1.5262   25.78
+# Mean.Temp     2.3331     0.1745   13.37
+# 
+# Correlation of Fixed Effects:
+#           (Intr)
+# Mean.Temp 0.995
+```
+
+```r
+coef(plant_m_rs3)
+
+# $Plot
+#   (Intercept) Mean.Temp
+# 1    39.55135  2.330023
+# 2    36.07028  1.970961
+# 3    38.98900  2.261597
+# 4    42.98463  2.803503
+# 5    35.10170  1.859112
+# 6    43.01076  2.789630
+# 7    36.01980  1.988193
+# 8    43.02281  2.661392
+```
