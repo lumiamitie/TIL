@@ -439,3 +439,90 @@ coef(plant_m_rs3)
 # 7    36.01980  1.988193
 # 8    43.02281  2.661392
 ```
+
+## 10. MCMCglmm을 이용한 계층 모형
+
+`lme4`에서 생성한 모형을 가지고 `MCMCglmm`에도 적용해보자. `MCMCglmm`은 베이지안 통계를 기반으로 MCMC (Markov Chain Monte Carlo) 기법을 통해 일반화된 선형 혼합모형을 학습한다. `lme4`와 마찬가지로 `MCMCglmm`에서는 우리가 학습하려는 모형의 구조에 random 효과와 fixed 효과를 추가할 수 있다. 하지만 prior를 추가할 수 있기 때문에 훨씬 더 유연한 구조를 만들 수 있다. 예를 들면, 반응변수의 범위를 제한할 수 있다. 
+
+`MCMCglmm`의 모형은 0이 많거나 0에 가깝게 치우쳐진 데이터에도 적합하다. `lme4`로 학습을 시키는 과정에서 모형에는 문제가 없는데 수렴이 잘 안된다면 `MCMCglmm`을 사용하는 것이 더 나은 방법일 수 있다. 
+
+이제 모형을 적용해보자. 
+
+```r
+plant_mcmc = MCMCglmm::MCMCglmm(
+  Richness ~ I(Year - 2017),
+  random = ~Site,
+  family = 'poisson',
+  data = toolik_plants_add_richness
+)
+
+#                        MCMC iteration = 0
+# 
+#  Acceptance ratio for liability set 1 = 0.000147
+# Error in MCMCglmm::MCMCglmm(Richness ~ I(Year - 2017), random = ~Site,  : 
+#   Mixed model equations singular: use a (stronger) prior
+```
+
+하지만 또 문제가 생겼다. 모형이 수렴하지 않는다. Site 변수만으로는 설명하는 변동량이 너무 작아서 생기는 문제일 수 있다. 이번에는 Block과 Plot을 random 효과로 추가해보자 (여기서는 둘 다 random intercept이다)
+
+```r
+plant_mcmc2 = MCMCglmm::MCMCglmm(
+  Richness ~ I(Year - 2017),
+  random = ~Block + Plot,
+  family = 'poisson',
+  data = toolik_plants_add_richness
+)
+```
+
+모형의 결과물을 살펴보자
+
+```r
+summary(plant_mcmc2)
+
+#  Iterations = 3001:12991
+#  Thinning interval  = 10
+#  Sample size  = 1000 
+# 
+#  DIC: 100378.8 
+# 
+#  G-structure:  ~Block
+# 
+#       post.mean l-95% CI u-95% CI eff.samp
+# Block    0.1372  0.03073    0.331    650.8
+# 
+#                ~Plot
+# 
+#      post.mean  l-95% CI u-95% CI eff.samp
+# Plot 0.0008529 0.0001743 0.002045    696.8
+# 
+#  R-structure:  ~units
+# 
+#       post.mean l-95% CI u-95% CI eff.samp
+# units   0.00492 0.004017 0.005808    20.05
+# 
+#  Location effects: Richness ~ I(Year - 2017) 
+# 
+#                post.mean l-95% CI u-95% CI eff.samp  pMCMC    
+# (Intercept)      2.08374  2.03534  2.13271    155.5 <0.001 ***
+# I(Year - 2017)  -0.06515 -0.06745 -0.06285    168.6 <0.001 ***
+# ---
+# Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+```
+
+Year 값의 posterior mean (여기서는 slope) 이 -0.06이다. 우리가 포아송 분포를 사용했기 때문에 이 값은 로그변환이 되어있는 상태다. 따라서 결론을 내려보면 다음과 같다. 이 모형을 따른다면 **종 분포도는 시간에 따라 감소하고 있다!**
+
+이제 모형이 잘 수렴되었는지 확인해야 한다. `MCMCglmm`에서는 traceplot을 통해 확인한다. 무작위하게 꿈틀대는 것 처럼 보여야 하지만 아래 그래프에서는 그렇지 않다. 아무래도 이 모형은 문제에 가장 잘 맞는 최적의 지점에 도달하지 못한 것 같다. 따라서 이 경우에는 모형의 결과물을 신뢰하기 어렵다. Site의 효과를 고려하지 않은 것이 원인일 수도 있다.
+
+```r
+# Random Effect
+plot(plant_mcmc2$VCV)
+```
+
+![png](fig/intro_to_model_design/output04.png)
+
+```r
+# Fixed Effect
+plot(plant_mcmc2$Sol)
+```
+
+![png](fig/intro_to_model_design/output05.png)
