@@ -446,6 +446,8 @@ coef(plant_m_rs3)
 
 `MCMCglmm`의 모형은 0이 많거나 0에 가깝게 치우쳐진 데이터에도 적합하다. `lme4`로 학습을 시키는 과정에서 모형에는 문제가 없는데 수렴이 잘 안된다면 `MCMCglmm`을 사용하는 것이 더 나은 방법일 수 있다. 
 
+### - 모형 적용하기
+
 이제 모형을 적용해보자. 
 
 ```r
@@ -526,3 +528,50 @@ plot(plant_mcmc2$Sol)
 ```
 
 ![png](fig/intro_to_model_design/output05.png)
+
+*Betula nana* 라는 특정한 종의 분포에 기후가 미치는 영향에 대한 `MCMCglmm` 모형을 구성해보자. 분포를 비율값이라고 생각해보면 (예를 들면, Betula nana가 해당 plot의 42%에 분포하고 있다) 포아송 분포를 그대로 사용해도 될 것 같다. Beta-Binomial 분포가 더 적합할 수 있다. 하지만 여기서는 일단 포아송 분포를 가지고 진행해보자.
+
+모형에 prior를 설정해보자. 여기서는 상세한 내용에 대해서 설명하지는 않겠지만, 적절한 prior 설정을 통해 모형이 더 잘 수렴되도록 조정할 수 있다. 
+
+```r
+# 약한 prior를 사용한다
+prior2 = list(R = list(V = 1, nu = 0.002),
+              G = list(G1 = list(V = 1, nu = 1, alpha.mu = 0, alpha.v = 10000),
+                       G2 = list(V = 1, nu = 1, alpha.mu = 0, alpha.v = 10000),
+                       G3 = list(V = 1, nu = 1, alpha.mu = 0, alpha.v = 10000)))
+
+# Betula nana 데이터를 추출한다
+betula = toolik_plants_add_richness %>% 
+  filter(Species == "Bet nan")
+
+betula_m = MCMCglmm(
+  round(Relative.Cover*100) ~ Year, 
+  random = ~Site + Block + Plot,
+  family = "poisson", 
+  prior = prior2, 
+  data = betula
+)
+
+summary(betula_m)
+plot(betula_m$VCV)
+plot(betula_m$Sol)
+```
+
+모형의 summary를 살펴보면, Year의 effect size가 매우 작다는 것을 알 수 있다. Betula nana의 분포는 2008 ~ 2012년 동안 크게 달라지지 않았다는 것을 의미한다.
+
+이번에는 site, black, plot의 위계 정보(위치)를 모두 random intercept로 포함시켰다. 그 결과 trace plot의 결과가 이전 모형보다 훨씬 좋다는 것을 확인할 수 있다. iteration은 기본값으로 13000으로 되어 있다. 반복횟수를 높이면 모형이 수렴하는데 도움이 될 수 있다.
+
+### - 시각적으로 확인하기
+
+`MCMCvis` 라이브러리를 사용하면 모형의 결과를 시각적으로 확인할 수 있다.
+
+```r
+MCMCvis::MCMCplot(treatment_mcmc$Sol)
+MCMCvis::MCMCplot(treatment_mcmc$VCV)
+```
+
+Sol은 fixed effect를, VCV는 random effect를 의미한다. 만약 특정 변수의 신용구간 (credible interval) 이 0을 포함한다면, 해당 효과는 유의하지 않다는 것을 의미한다. 따라서 우리는 Betula nana의 분포가 해당 변수로 인해 변하지 않았다는 것을 알 수 있다. 
+
+## 11. 결론
+
+통계 모형을 구성하기 위해서는 먼저 **필요한 질문**이 무엇인지, **데이터의 구조**는 어떻게 구성되어 있는지, 어떤 **가정**을 내려야 하는지 고민해야 한다. 어떠한 모형도 완벽할 수는 없겠지만, 계층 모형을 통해 가정을 최소화시키고 복잡한 데이터 구조를 만족시킬 수 있었다. 통계 모형을 구성하는 것은 어려워 보이지만, 익숙해지면 점차 쉬워질 것이다. 또한 적절한 통계 도구를 사용한다면 문제를 다루는데 도움이 될 것이다. 
