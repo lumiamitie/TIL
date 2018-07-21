@@ -392,4 +392,51 @@ interaction_full_df.head(10)
 </table>
 </div>
 
+# 평가
+
+머신러닝 프로젝트에서는 평가를 잘 하는 것이 중요하다. 서로 다른 알고리즘을 비교하거나 모형을 위한 하이퍼파라미터를 선택할 수 있게 해주기 때문이다. 평가하는 과정에서 중요한 점은, 학습하지 않은 데이터에도 잘 동작할 수 있도록 모형이 일반화되었는지 확인하는 것이다. 이를 위해 **Cross Validation**이라는 기법을 사용한다. 여기서는 **holdout**이라는 간단한 방법을 써보자. 학습과정에서 임의로 추출한 데이터(20%라고 해보자)를 테스트용으로 따로 빼두고, 평가를 위해서만 사용한다. 아래 평가과정에서 측정하는 지표들은 모두 이 **test set** 데이터를 통해 측정한 것들이다.
+
+참고로 특정한 날짜를 기준으로 학습셋과 테스트셋 데이터를 나누기도 한다. 특정 일자보다 이전의 데이터는 모두 학습에 사용하고, 이후의 데이터는 모두 평가하는데 쓴다. 미래의 사용자 행동을 예측한다면 이러한 방식을 사용해서 평가할 수도 있다.
+
+
+```python
+interaction_train, interaction_test = train_test_split(
+    interaction_full_df,
+    stratify=interaction_full_df['personId'],
+    test_size=0.2,
+    random_state=42
+)
+# interactions on Train set: 31284
+# interactions on Test set: 7822
+```
+
+추천시스템에서는 일반적으로 사용하는 평가 지표가 존재한다. **Top-N 정확도**를 사용해서 모형을 측정해보자. 모형을 통해 추천한 항목들을 테스트셋에 있는 항목들과 비교해보는 것이다.
+
+이 평가는 다음과 같이 동작한다
+
+- 각 사용자별로 
+    - 테스트셋에 있는 데이터 중 해당 사용자가 상호작용했던 상품들에 대해서
+        - 1) 해당 유저가 상호작용한 적이 없는 상품 중 100개를 샘플링한다
+            - 여기서는 사용자가 상호작용하지 않았는 상품에는 관심이 없다고 가정한다
+            - 단순히 상품에 대해서 인지하지 못해 상호작용하지 않았을 수도 있다. 하지만 일단 이러한 가정을 유지한다
+        - 2) 추천 모형을 통해 상호작용한 상품과 상호작용 없었던 100개 상품에 대해 추천 순위를 매긴다
+        - 3) 이 사용자와 상품에 대한 Top-N 정확도를 계산한다
+- 전체 Top-N 정확도를 종합한다
+
+Top-N 정확도 지표 중에서 **Recall@N** 을 사용하자. 추천하려는 상품이 101개의 상품 중에서 상위 N개 안에 존재하는지 여부를 측정한 것이다. 참고로, 관련된 상품의 순서 등을 고려한 NDCG@N 이나 MAP@N 같은 다른 지표들도 존재한다. 이러한 지표들에 대해서는 다음 [문서](http://fastml.com/evaluating-recommender-systems/)를 참고해보자.
+
+
+```python
+# 평가 속도를 높이기 위해 personId를 기준으로 인덱스를 설정한다
+interaction_full_indexed = interaction_full_df.set_index('personId')
+interaction_train_indexed = interaction_train.set_index('personId')
+interaction_test_indexed = interaction_test.set_index('personId')
+```
+
+
+```python
+def get_items_interacted(person_id, interaction_df):
+    interated_items = interaction_df.loc[person_id]['contentId']
+    return set(interated_items if type(interated_items) == pd.Series else [interated_items])
+```
 
