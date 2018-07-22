@@ -440,3 +440,749 @@ def get_items_interacted(person_id, interaction_df):
     return set(interated_items if type(interated_items) == pd.Series else [interated_items])
 ```
 
+```python
+class ModelEvaluator:
+    def __init__(self, n_non_interacted=100):
+        self.EVAL_RANDOM_SAMPLE_NON_INTERACTED_ITEMS = n_non_interacted
+        
+    def get_non_interacted_items_sample(self, person_id, sample_size, seed=42):
+        interacted_items = get_items_interacted(person_id, interaction_full_indexed)
+        all_items = set(articles_df['contentId'])
+        non_interacted_items = all_items - interacted_items
+        
+        random.seed(seed)
+        non_interacted_items_sample = random.sample(non_interacted_items, sample_size)
+        return set(non_interacted_items_sample)
+        
+    def _verify_hit_top_n(self, item_id, recommend_items, topn):
+        try:
+            index = next(i for i, c in enumerate(recommend_items) if c == item_id)
+        except:
+            index = -1
+        hit = int(index in range(0, topn))
+        return hit, index
+    
+    def evaluate_model_for_user(self, model, person_id):
+        interacted_values_testset = interaction_test_indexed.loc[person_id]
+        if type(interacted_values_testset['contentId']) == pd.Series:
+            person_interacted_items_testset = set(interacted_values_testset['contentId'])
+        else:
+            person_interacted_items_testset = set([int(interacted_values_testset['contentId'])])
+        
+        interacted_items_count_testset = len(person_interacted_items_testset)
+        
+        # 특정 사용자에 대한 추천 순위 목록을 받아온다
+        person_recs = model.recommend_items(
+            person_id,
+            items_to_ignore=get_items_interacted(person_id, interaction_train_indexed),
+            topn=10000000000
+        )
+        
+        hits_at_5_count = 0
+        hits_at_10_count = 0
+        
+        # test셋에서 사용자가 상호작용한 모든 항목에 대해 반복한다
+        for item_id in person_interacted_items_testset:
+            
+            # 사용자가 상호작용하지 않은 100개 항목을 샘플링한다
+            non_interacted_items_sample = self.get_non_interacted_items_sample(
+                person_id,
+                sample_size=self.EVAL_RANDOM_SAMPLE_NON_INTERACTED_ITEMS,
+                seed=item_id % (2**32)
+            )
+            
+            # 현재 선택한 item_id(상호작용 있었던 항목)와 100개 랜덤 샘플을 합친다
+            items_to_filter_recs = non_interacted_items_sample.union(set([item_id]))
+            
+            # 추천 결과물 중에서 현재 선택한 item_id와 100개 랜덤 샘플의 결과물로만 필터링한다
+            valid_recs_df = person_recs[person_recs['contentId'].isin(items_to_filter_recs)]
+            valid_recs = valid_recs_df['contentId'].values
+            
+            # 현재 선택한 item_id가 Top-N 추천 결과 안에 있는지 확인한다
+            hit_at_5, index_at_5 = self._verify_hit_top_n(item_id, valid_recs, 5)
+            hits_at_5_count += hit_at_5
+            hit_at_10, index_at_10 = self._verify_hit_top_n(item_id, valid_recs, 10)
+            hits_at_10_count += hit_at_10
+            
+        # Recall 값은 상호작용 있었던 항목들 중에서 관련없는 항목들과 섞였을 때 Top-N에 오른 항목들의 비율로 나타낼 수 있다
+        recall_at_5 = hits_at_5_count / interacted_items_count_testset
+        recall_at_10 = hits_at_10_count / interacted_items_count_testset
+        
+        person_metrics = {
+            'hits@5_count': hits_at_5_count,
+            'hits@10_count': hits_at_10_count,
+            'interacted_count': interacted_items_count_testset,
+            'recall@5': recall_at_5,
+            'recall@10': recall_at_10
+        }
+        return person_metrics
+    
+    def evaluate_model(self, model):
+        people_metrics = []
+        for idx, person_id in enumerate(list(interaction_test_indexed.index.unique().values)):
+            person_metrics = self.evaluate_model_for_user(model, person_id)
+            person_metrics['_person_id'] = person_id
+            people_metrics.append(person_metrics)
+
+        print('{} users processed'.format(idx))
+        
+        detailed_result = (
+            pd.DataFrame(people_metrics)
+              .sort_values('interacted_count', ascending=False)
+        )
+        
+        global_recall_at_5 = detailed_result['hits@5_count'].sum() / detailed_result['interacted_count'].sum()
+        global_recall_at_10 = detailed_result['hits@10_count'].sum() / detailed_result['interacted_count'].sum()
+        
+        global_metrics = {
+            'model_name': model.get_model_name(),
+            'recall@5': global_recall_at_5,
+            'recall@10': global_recall_at_10
+        }
+        
+        return global_metrics, detailed_result
+```
+
+
+```python
+model_evaluator = ModelEvaluator(n_non_interacted=100)
+```
+
+# Popularity Model
+
+가장 기본적이면서 깨기 어려운 접근방법은 **인기도 모형**이다. 이 모형은 사실 개인화된 추천을 하지 않는다. 그냥 인기도가 높은 항목들 중에서 사용자가 선택한 적이 없는 항목들을 추천한다. 인기도는 집단지성이라고 볼 수도 있기 때문에, 대체로 많은 사람들에게 잘 동작하는 좋은 추천을 제공한다. 하지만, 일반적으로 추천시스템의 목적은 굉장히 구체적인 주제들에 대한 롱테일 항목들을 제공하는 것이기 때문에 간단한 인기도 모형에 비해 훨씬 많은 요소들을 고려할 필요가 있다.
+
+
+```python
+item_popularity = (interaction_full_df
+ .groupby('contentId')['eventStrength'].sum()
+ .sort_values(ascending=False)
+ .reset_index()
+)
+
+item_popularity.head(10)
+```
+
+
+<div>
+<table class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>contentId</th>
+      <th>eventStrength</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>-4029704725707465084</td>
+      <td>457.5</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>-2358756719610361882</td>
+      <td>361.0</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>-6783772548752091658</td>
+      <td>357.0</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>8657408509986329668</td>
+      <td>338.0</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>-133139342397538859</td>
+      <td>336.5</td>
+    </tr>
+    <tr>
+      <th>5</th>
+      <td>-8208801367848627943</td>
+      <td>327.5</td>
+    </tr>
+    <tr>
+      <th>6</th>
+      <td>-6843047699859121724</td>
+      <td>315.0</td>
+    </tr>
+    <tr>
+      <th>7</th>
+      <td>2581138407738454418</td>
+      <td>310.0</td>
+    </tr>
+    <tr>
+      <th>8</th>
+      <td>2857117417189640073</td>
+      <td>308.5</td>
+    </tr>
+    <tr>
+      <th>9</th>
+      <td>-1633984990770981161</td>
+      <td>298.0</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+```python
+class PopularityRecommender:
+    
+    MODEL_NAME = 'Popularity'
+    
+    def __init__(self, popularity_df, items_df=None):
+        self.popularity_df = popularity_df
+        self.items_df = items_df
+        
+    def get_model_name(self):
+        return self.MODEL_NAME
+    
+    def recommend_items(self, user_id, items_to_ignore=[], topn=10, verbose=False):
+        # 인기상품 중에서 사용자가 보지 않았던 상품을 추천한다
+        recommendations = (
+          self.popularity_df[~self.popularity_df['contentId'].isin(items_to_ignore)]
+            .sort_values('eventStrength', ascending=False)
+            .head(topn)
+        )
+        
+        if verbose:
+            if self.items_df is None:
+                raise Exception('"items_df" is required in verbose mode')
+            recommendations = (recommendations
+                .merge(self.items_df, how='left', left_on='contentId', right_on='contentId')
+                .loc[:, ['eventStrength', 'contentId', 'title', 'url', 'lang']]
+            )
+            
+        return recommendations
+```
+
+
+```python
+popularity_model = PopularityRecommender(item_popularity, articles_df)
+```
+
+위에서 정리했던 방법을 바탕으로 인기도 모형을 평가해보자. 
+
+**Recall@5**는 0.2262를 달성했다. 상호작용이 있었던 항목 중 22.6%는 테스트셋에서 top-5 항목에 들었다는 것을 의미한다. **Recall@10**은 34.7%이다. 
+
+
+```python
+print('Popularity 추천 모형을 평가합니다')
+pop_global_metrics, pop_detailed_results = model_evaluator.evaluate_model(popularity_model)
+print('Global Metrics:\n{}'.format(pop_global_metrics))
+pop_detailed_results.head(10)
+
+# Popularity 추천 모형을 평가합니다
+# 1139 users processed
+# Global Metrics:
+# {'model_name': 'Popularity', 'recall@5': 0.22628483763743287, 'recall@10': 0.34671439529532089}
+```
+
+
+<div>
+<table class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>_person_id</th>
+      <th>hits@10_count</th>
+      <th>hits@5_count</th>
+      <th>interacted_count</th>
+      <th>recall@10</th>
+      <th>recall@5</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>76</th>
+      <td>3609194402293569455</td>
+      <td>45</td>
+      <td>22</td>
+      <td>192</td>
+      <td>0.234375</td>
+      <td>0.114583</td>
+    </tr>
+    <tr>
+      <th>17</th>
+      <td>-2626634673110551643</td>
+      <td>25</td>
+      <td>14</td>
+      <td>134</td>
+      <td>0.186567</td>
+      <td>0.104478</td>
+    </tr>
+    <tr>
+      <th>16</th>
+      <td>-1032019229384696495</td>
+      <td>26</td>
+      <td>18</td>
+      <td>130</td>
+      <td>0.200000</td>
+      <td>0.138462</td>
+    </tr>
+    <tr>
+      <th>10</th>
+      <td>-1443636648652872475</td>
+      <td>13</td>
+      <td>4</td>
+      <td>117</td>
+      <td>0.111111</td>
+      <td>0.034188</td>
+    </tr>
+    <tr>
+      <th>82</th>
+      <td>-2979881261169775358</td>
+      <td>31</td>
+      <td>22</td>
+      <td>88</td>
+      <td>0.352273</td>
+      <td>0.250000</td>
+    </tr>
+    <tr>
+      <th>161</th>
+      <td>-3596626804281480007</td>
+      <td>21</td>
+      <td>12</td>
+      <td>80</td>
+      <td>0.262500</td>
+      <td>0.150000</td>
+    </tr>
+    <tr>
+      <th>65</th>
+      <td>1116121227607581999</td>
+      <td>30</td>
+      <td>17</td>
+      <td>73</td>
+      <td>0.410959</td>
+      <td>0.232877</td>
+    </tr>
+    <tr>
+      <th>81</th>
+      <td>692689608292948411</td>
+      <td>22</td>
+      <td>15</td>
+      <td>69</td>
+      <td>0.318841</td>
+      <td>0.217391</td>
+    </tr>
+    <tr>
+      <th>106</th>
+      <td>-9016528795238256703</td>
+      <td>18</td>
+      <td>14</td>
+      <td>69</td>
+      <td>0.260870</td>
+      <td>0.202899</td>
+    </tr>
+    <tr>
+      <th>52</th>
+      <td>3636910968448833585</td>
+      <td>27</td>
+      <td>15</td>
+      <td>68</td>
+      <td>0.397059</td>
+      <td>0.220588</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+
+# Content-Based Filtering Model
+
+컨텐츠 기반의 필터링 방법은 사용자가 상호작용했던 항목의 특성을 바탕으로 유사한 항목을 추천한다. 추천 결과물은 사용자의 이전 선택에 의해 결정되기 때문에 Cold Start 문제에 비교적 잘 대응할 수 있다. 글, 신문기사, 책 등에서 추출한 텍스트를 바탕으로 특정 항목과 사용자의 특성을 정의해볼 수 있다.
+
+여기서는 **TF-IDF**라는 간단한 방법론을 적용해보자. 이 방법을 통해 구조화되지 않은 텍스트를 벡터 구조로 변경할 수 있다. 각 단어는 벡터 내에서 위치로 표현되고, 글에서 해당 단어가 몇 번 등장했는지를 수치로 나타낸다. 이러한 방식으로 모든 글을 벡터 공간에 표현하고 각 게시물 간의 유사도를 구한다.
+
+
+```python
+# # stopwords 다운로드
+# import nltk
+# nltk.download('stopwords')
+
+# stopwords를 제거한다
+stopwords_list = stopwords.words('english') + stopwords.words('portuguese')
+
+# 벡터의 길이는 5000, unigram과 bigram을 사용하고, stopwords를 제거하도록 학습한다
+vectorizer = TfidfVectorizer(
+    analyzer='word',
+    ngram_range=(1, 2),
+    min_df=0.003,
+    max_df=0.5,
+    max_features=5000,
+    stop_words=stopwords_list
+)
+
+item_ids = articles_df['contentId'].tolist()
+tfidf_matrix = vectorizer.fit_transform(articles_df['title'] + '' + articles_df['text'])
+tfidf_feature_names = vectorizer.get_feature_names()
+```
+
+
+```python
+tfidf_matrix
+# <3047x5000 sparse matrix of type '<class 'numpy.float64'>'
+#   with 638928 stored elements in Compressed Sparse Row format>
+```
+
+
+사용자의 특성을 모델링하기 위해, 해당 사용자가 상호작용했던 모든 항목들 특성의 평균을 계산한다. 이 때, 각 상호작용의 강도에 따라 가중치를 부여하여 평균을 구한다.
+
+
+```python
+def get_item_profile(item_id):
+    idx = item_ids.index(item_id)
+    item_profile = tfidf_matrix[idx:idx+1]
+    return item_profile
+
+def get_item_profiles(ids):
+    item_profiles_list = [get_item_profile(x) for x in ids]
+    item_profiles = scipy.sparse.vstack(item_profiles_list)
+    return item_profiles
+
+def build_user_profile(person_id, interaction_indexed_df):
+    interaction_person_df = interaction_indexed_df.loc[person_id]
+    user_item_profiles = get_item_profiles(interaction_person_df['contentId'])
+    
+    user_item_strengths = np.array(interaction_person_df['eventStrength']).reshape(-1, 1)
+    
+    # 상호작용 강도를 바탕으로 가중치를 부여하여 평균 계산한다
+    user_item_strengths_weighted_avg = \
+        np.sum(user_item_profiles.multiply(user_item_strengths), axis=0) /\
+        np.sum(user_item_strengths)
+        
+    user_profile_norm = sklearn.preprocessing.normalize(user_item_strengths_weighted_avg)
+    return user_profile_norm
+
+def build_user_profiles():
+    interaction_indexed_df = (interaction_full_df
+        .loc[lambda d: d['contentId'].isin(articles_df['contentId'])]
+        .set_index('personId')
+    )
+    user_profiles = {}
+    
+    for person_id in interaction_indexed_df.index.unique():
+        user_profiles[person_id] = build_user_profile(person_id, interaction_indexed_df)
+        
+    return user_profiles
+```
+
+
+```python
+user_profiles = build_user_profiles()
+len(user_profiles)
+# 1140
+```
+
+
+프로필 안쪽을 한 번 살펴보자. 길이 5000인 단위 벡터로 되어있다. 각 값들은 해당 위치의 토큰이 (unigram 또는 bigram) 사용자와 얼마나 연관성이 있는지를 나타낸다.
+
+저자의 프로필을 살펴보면 가장 높은 연관성을 보이는 항목들이 머신러닝, 딥러닝 등이다. 결과물이 꽤 괜찮은 것으로 보인다!
+
+
+```python
+myprofile = user_profiles[-1479311724257856983].flatten().tolist()
+pd.DataFrame(sorted(zip(tfidf_feature_names, myprofile), key=lambda x: -x[1])[:20],
+             columns=['token', 'relevance'])
+```
+
+
+
+
+<div>
+<table class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>token</th>
+      <th>relevance</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>learning</td>
+      <td>0.312070</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>machine learning</td>
+      <td>0.269224</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>machine</td>
+      <td>0.256997</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>data</td>
+      <td>0.186630</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>google</td>
+      <td>0.171385</td>
+    </tr>
+    <tr>
+      <th>5</th>
+      <td>ai</td>
+      <td>0.141732</td>
+    </tr>
+    <tr>
+      <th>6</th>
+      <td>graph</td>
+      <td>0.114026</td>
+    </tr>
+    <tr>
+      <th>7</th>
+      <td>algorithms</td>
+      <td>0.109420</td>
+    </tr>
+    <tr>
+      <th>8</th>
+      <td>like</td>
+      <td>0.096113</td>
+    </tr>
+    <tr>
+      <th>9</th>
+      <td>language</td>
+      <td>0.085010</td>
+    </tr>
+    <tr>
+      <th>10</th>
+      <td>models</td>
+      <td>0.081785</td>
+    </tr>
+    <tr>
+      <th>11</th>
+      <td>search</td>
+      <td>0.081096</td>
+    </tr>
+    <tr>
+      <th>12</th>
+      <td>algorithm</td>
+      <td>0.076943</td>
+    </tr>
+    <tr>
+      <th>13</th>
+      <td>people</td>
+      <td>0.076800</td>
+    </tr>
+    <tr>
+      <th>14</th>
+      <td>deep learning</td>
+      <td>0.076610</td>
+    </tr>
+    <tr>
+      <th>15</th>
+      <td>research</td>
+      <td>0.073528</td>
+    </tr>
+    <tr>
+      <th>16</th>
+      <td>spark</td>
+      <td>0.073341</td>
+    </tr>
+    <tr>
+      <th>17</th>
+      <td>deep</td>
+      <td>0.072905</td>
+    </tr>
+    <tr>
+      <th>18</th>
+      <td>company</td>
+      <td>0.069137</td>
+    </tr>
+    <tr>
+      <th>19</th>
+      <td>model</td>
+      <td>0.067404</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+```python
+class ContentBasedRecommender:
+    
+    MODEL_NAME = 'Content-Based'
+    
+    def __init__(self, item_ids, items_df=None):
+        self.item_ids = item_ids
+        self.items_df = items_df
+        
+    def get_model_name(self):
+        return self.MODEL_NAME
+    
+    def _get_similar_items_to_user_profile(self, person_id, topn=1000):
+        # 유저 특성과 항목 특성 사이의 코사인 유사도를 구한다
+        cosine_similarities = cosine_similarity(user_profiles[person_id], tfidf_matrix)
+        
+        # 가장 유사한 항목을 찾는다
+        similar_indices = cosine_similarities.argsort().flatten()[-topn:]
+        
+        # 유사도를 기준으로 유사한 항목을 정렬한다
+        similar_items = sorted(
+            [(item_ids[i], cosine_similarities[0, i]) for i in similar_indices],
+            key=lambda x: -x[1]
+        )
+        
+        return similar_items
+    
+    def recommend_items(self, user_id, items_to_ignore=[], topn=10, verbose=False):
+        similar_items = self._get_similar_items_to_user_profile(user_id)
+        
+        # 기존에 상호작용했던 항목은 제거한다
+        similar_items_filtered = list(filter(lambda x: x[0] not in items_to_ignore, similar_items))
+        
+        recommendations = (
+            pd.DataFrame(similar_items_filtered, columns=['contentId', 'recStrength'])
+              .head(topn)
+        )
+        
+        if verbose:
+            if self.items_df is None:
+                raise Exception('"items_df" is required in verbose mode')
+            recommendations = (recommendations
+                .merge(self.items_df, how='left', left_on='contentId', right_on='contentId')
+                .loc[:, ['recStrength', 'contentId', 'title', 'url', 'lang']]
+            )
+        
+        return recommendations
+```
+
+
+```python
+content_based_model = ContentBasedRecommender(item_ids, articles_df)
+```
+
+콘텐츠 기반 추천 모형을 통해 개인화된 추천을 테스트해본 결과, **Recall@5**는 0.3842, **Recall@10**은 0.4941로 증가한 것을 볼 수 있다. 
+
+
+```python
+print('콘텐츠 기반 추천 모형을 평가합니다')
+cb_global_metrics, cb_detailed_results = model_evaluator.evaluate_model(content_based_model)
+print('Global Metrics:\n{}'.format(cb_global_metrics))
+cb_detailed_results.head(10)
+
+# 콘텐츠 기반 추천 모형을 평가합니다
+# 1139 users processed
+# Global Metrics:
+# {'model_name': 'Content-Based', 'recall@5': 0.38417284581948352, 'recall@10': 0.49411915111224752}
+```
+
+<div>
+<table class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>_person_id</th>
+      <th>hits@10_count</th>
+      <th>hits@5_count</th>
+      <th>interacted_count</th>
+      <th>recall@10</th>
+      <th>recall@5</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>76</th>
+      <td>3609194402293569455</td>
+      <td>29</td>
+      <td>17</td>
+      <td>192</td>
+      <td>0.151042</td>
+      <td>0.088542</td>
+    </tr>
+    <tr>
+      <th>17</th>
+      <td>-2626634673110551643</td>
+      <td>36</td>
+      <td>19</td>
+      <td>134</td>
+      <td>0.268657</td>
+      <td>0.141791</td>
+    </tr>
+    <tr>
+      <th>16</th>
+      <td>-1032019229384696495</td>
+      <td>35</td>
+      <td>20</td>
+      <td>130</td>
+      <td>0.269231</td>
+      <td>0.153846</td>
+    </tr>
+    <tr>
+      <th>10</th>
+      <td>-1443636648652872475</td>
+      <td>47</td>
+      <td>33</td>
+      <td>117</td>
+      <td>0.401709</td>
+      <td>0.282051</td>
+    </tr>
+    <tr>
+      <th>82</th>
+      <td>-2979881261169775358</td>
+      <td>20</td>
+      <td>6</td>
+      <td>88</td>
+      <td>0.227273</td>
+      <td>0.068182</td>
+    </tr>
+    <tr>
+      <th>161</th>
+      <td>-3596626804281480007</td>
+      <td>26</td>
+      <td>17</td>
+      <td>80</td>
+      <td>0.325000</td>
+      <td>0.212500</td>
+    </tr>
+    <tr>
+      <th>65</th>
+      <td>1116121227607581999</td>
+      <td>17</td>
+      <td>13</td>
+      <td>73</td>
+      <td>0.232877</td>
+      <td>0.178082</td>
+    </tr>
+    <tr>
+      <th>81</th>
+      <td>692689608292948411</td>
+      <td>19</td>
+      <td>14</td>
+      <td>69</td>
+      <td>0.275362</td>
+      <td>0.202899</td>
+    </tr>
+    <tr>
+      <th>106</th>
+      <td>-9016528795238256703</td>
+      <td>15</td>
+      <td>9</td>
+      <td>69</td>
+      <td>0.217391</td>
+      <td>0.130435</td>
+    </tr>
+    <tr>
+      <th>52</th>
+      <td>3636910968448833585</td>
+      <td>13</td>
+      <td>4</td>
+      <td>68</td>
+      <td>0.191176</td>
+      <td>0.058824</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
