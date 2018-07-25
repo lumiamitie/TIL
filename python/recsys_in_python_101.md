@@ -1196,3 +1196,665 @@ cb_detailed_results.head(10)
 - **모형 기반**
     - 다양한 머신러닝 기법을 통해 모형을 구현한다
     - 인공신경망, 베이지안 네트워크, 클러스터링, SVD, pLSA 등 다양한 모형을 활용한 CF 모형이 존재한다
+
+## Matrix Factorization
+
+잠재 요인 모형은 사용자-상품 행렬을 더 낮은 차원의 잠재요인으로 표현한다. 이러한 방식의 장점은 어마어마한 양의 결측치가 섞여있는 고차원의 행렬 대신 더 낮은 차원의 훨씬 작은 행렬을 다루게 된다는 것이다. 
+
+요약된 형태의 표현은 사용자기반 이웃, 항목기반 이웃을 찾는데 활용될 수 있다. 이러한 패러다임에는 많은 장점이 있다. 메모리 기반의 방식보다 원본 행렬의 희소성(sparcity)을 더 잘 처리한다. 축소된 행렬을 통해 유사도를 비교하는 것은 원본 데이터를 직접 다루는 것에 비해서 확장성이 더 좋다.
+
+여기서는 널리 사용되는 잠재요인 모형 중에서 SVD(Singular Value Decomposition)를 사용해본다. CF에 특화된 다른 matrix factorization 프레임워크들이 있지만, 여기서는 케글 커널에서 동작하는 scipy의 SVD 구현체를 사용한다. 영화 데이터셋에 SVD를 적용하는 예제는 다음 [링크](https://beckernick.github.io/matrix-factorization-recommender/)를 참고하자
+
+사용자-항목 행렬에서 사용할 요인의 수를 결정하는 것은 상당히 중요한 작업이다. 요인의 수가 많을수록 행렬을 분해한 결과가 원본에 가까울 것이다. 이러한 경우에는 모형이 세부적인 내용을 너무 많이 기억해버리는 바람에 일반화가 잘 되지 않을 수 있다. 요인의 개수를 줄이면 모형이 더 일반화된다.
+
+
+```python
+users_items_pivot_df = (interaction_train
+  .pivot(index='personId', columns='contentId', values='eventStrength')
+  .fillna(0)
+)
+```
+
+
+```python
+users_items_pivot_df.iloc[:5, :5]
+```
+
+
+<div>
+<table class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th>contentId</th>
+      <th>-9222795471790223670</th>
+      <th>-9216926795620865886</th>
+      <th>-9194572880052200111</th>
+      <th>-9192549002213406534</th>
+      <th>-9190737901804729417</th>
+    </tr>
+    <tr>
+      <th>personId</th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>-9223121837663643404</th>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+    </tr>
+    <tr>
+      <th>-9212075797126931087</th>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+    </tr>
+    <tr>
+      <th>-9207251133131336884</th>
+      <td>0.0</td>
+      <td>3.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+    </tr>
+    <tr>
+      <th>-9199575329909162940</th>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+    </tr>
+    <tr>
+      <th>-9196668942822132778</th>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+```python
+users_items_pivot_matrix = users_items_pivot_df.as_matrix()
+users_items_pivot_matrix[:10]
+
+# array([[ 0.,  0.,  0., ...,  0.,  0.,  0.],
+#        [ 0.,  0.,  0., ...,  0.,  0.,  0.],
+#        [ 0.,  3.,  0., ...,  0.,  0.,  0.],
+#        ..., 
+#        [ 0.,  0.,  0., ...,  0.,  0.,  0.],
+#        [ 0.,  0.,  0., ...,  0.,  0.,  0.],
+#        [ 0.,  0.,  0., ...,  0.,  0.,  0.]])
+```
+
+
+```python
+user_ids = list(users_items_pivot_df.index)
+user_ids[:10]
+
+# [-9223121837663643404,
+#  -9212075797126931087,
+#  -9207251133131336884,
+#  -9199575329909162940,
+#  -9196668942822132778,
+#  -9188188261933657343,
+#  -9172914609055320039,
+#  -9156344805277471150,
+#  -9120685872592674274,
+#  -9109785559521267180]
+```
+
+
+```python
+# User-Item matrix에서 요인의 개수를 정한다
+NUMBER_OF_FACTORS_MF = 15
+
+# User-Item Matrix을 분해한다
+U, sigma, Vt = svds(users_items_pivot_matrix, k=NUMBER_OF_FACTORS_MF)
+```
+
+
+```python
+U.shape # (1140, 15)
+Vt.shape # (15, 2926)
+
+sigma_mat = np.diag(sigma)
+sigma_mat.shape # (15, 15)
+```
+
+
+행렬 분해가 끝나면, 요인을 다시 곱해서 원래 행렬을 복구한다. 그 결과 생성된 행렬은 더이상 희소행렬이 아니다. 사용자가 상호작용한적 없는 항목에 대한 예측까지 포함된 예측을 생성한다. 우리는 이 결과를 가지고 추천을 제공할 것이다.
+
+
+```python
+all_user_predicted_ratings = np.dot(np.dot(U, sigma_mat), Vt)
+all_user_predicted_ratings
+
+# array([[ -3.59736043e-03,   1.13569387e-03,   1.20882188e-02, ...,
+#           1.92702938e-02,   5.12834501e-03,   2.51643553e-03],
+#        [  9.71055720e-05,   8.75622910e-05,   3.93275556e-03, ...,
+#           4.06961661e-04,  -4.19667479e-03,  -6.14562512e-04],
+#        [ -2.52746201e-02,   4.07052544e-03,  -1.36013462e-02, ...,
+#           1.51481593e-02,  -5.52722947e-03,   7.65220362e-03],
+#        ..., 
+#        [  2.07700031e-02,   1.02281302e-02,  -5.38400117e-02, ...,
+#           2.87303379e-02,  -5.95440040e-02,  -3.52231861e-03],
+#        [ -4.30766935e-02,   4.41158703e-03,   4.56109314e-02, ...,
+#           2.21704728e-02,   5.25493080e-04,   1.05746293e-03],
+#        [  1.55442912e-02,   2.01216659e-02,   3.37166289e-01, ...,
+#           2.20774211e-03,   8.01526416e-02,   1.87568874e-02]])
+```
+
+
+```python
+# 재구성한 행렬을 pandas DataFrame으로 변환한다
+cf_preds_df = (
+  pd.DataFrame(all_user_predicted_ratings, 
+               columns=users_items_pivot_df.columns, 
+               index=user_ids)
+    .transpose()
+)
+```
+
+
+```python
+cf_preds_df.iloc[:5, :5]
+```
+
+
+<div>
+<table class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>-9223121837663643404</th>
+      <th>-9212075797126931087</th>
+      <th>-9207251133131336884</th>
+      <th>-9199575329909162940</th>
+      <th>-9196668942822132778</th>
+    </tr>
+    <tr>
+      <th>contentId</th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>-9222795471790223670</th>
+      <td>-0.003597</td>
+      <td>0.000097</td>
+      <td>-0.025275</td>
+      <td>0.049606</td>
+      <td>-0.014388</td>
+    </tr>
+    <tr>
+      <th>-9216926795620865886</th>
+      <td>0.001136</td>
+      <td>0.000088</td>
+      <td>0.004071</td>
+      <td>-0.000690</td>
+      <td>0.001928</td>
+    </tr>
+    <tr>
+      <th>-9194572880052200111</th>
+      <td>0.012088</td>
+      <td>0.003933</td>
+      <td>-0.013601</td>
+      <td>-0.006128</td>
+      <td>0.035771</td>
+    </tr>
+    <tr>
+      <th>-9192549002213406534</th>
+      <td>0.028340</td>
+      <td>-0.003469</td>
+      <td>-0.025762</td>
+      <td>-0.006675</td>
+      <td>0.011599</td>
+    </tr>
+    <tr>
+      <th>-9190737901804729417</th>
+      <td>0.015525</td>
+      <td>-0.001208</td>
+      <td>0.008202</td>
+      <td>0.001825</td>
+      <td>-0.000400</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+```python
+class CFRecommender:
+    
+    MODEL_NAME = 'Collaborative Filtering'
+    
+    def __init__(self, cf_predictions_df, items_df=None):
+        self.cf_predictions_df = cf_predictions_df
+        self.items_df = items_df
+        
+    def get_model_name(self):
+        return self.MODEL_NAME
+    
+    def recommend_items(self, user_id, items_to_ignore=[], topn=10, verbose=False):
+        # 사용자에 대한 예측값을 가져와서 정렬한다
+        sorted_user_prediction = (self.cf_predictions_df
+            .loc[:, user_id]
+            .sort_values(ascending=False)
+            .reset_index()
+            .rename(columns={user_id: 'recStrength'})
+        )
+        
+        recommendations = (sorted_user_prediction
+            .loc[lambda d: ~d['contentId'].isin(items_to_ignore)]
+            .sort_values('recStrength', ascending=False)
+            .head(topn)
+        )
+        
+        if verbose:
+            if self.item_df is None:
+                raise Exception('"items_df" is required in verbose mode')
+            
+            recommendations = (recommendations
+                .merge(self.items_df, how='left', left_on='contentId', right_on='contentId')
+                .loc[:, ['recStrength', 'contentId', 'title', 'url', 'lang']]
+            )
+            
+        return recommendations
+```
+
+
+```python
+cf_recommender_model = CFRecommender(cf_preds_df, articles_df)
+```
+
+CF 모형을 평가해본 결과, **Recall@5**는 0.2655, **Recall@10**은 0.3979 가 나왔다. 인기도 모형보다는 높지만 컨텐츠 기반 모형보다는 낮은 수치가 나왔다. 현재 데이터셋에서는 텍스트로부터 얻는 정보가 사용자 선호도를 모델링하는데 더 도움이 되는 것을 확인할 수 있다.
+
+
+```python
+print('협업 필터링(SVD 행렬분해) 모형을 평가합니다')
+cf_global_metrics, cf_detailed_results = model_evaluator.evaluate_model(cf_recommender_model)
+print('Global Metrics:\n{}'.format(cf_global_metrics))
+cf_detailed_results.head(10)
+
+# 협업 필터링(SVD 행렬분해) 모형을 평가합니다
+# 1139 users processed
+# Global Metrics:
+# {'model_name': 'Collaborative Filtering', 'recall@5': 0.26553311173612887, 'recall@10': 0.39798005625159805}
+```
+
+
+<div>
+<table class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>_person_id</th>
+      <th>hits@10_count</th>
+      <th>hits@5_count</th>
+      <th>interacted_count</th>
+      <th>recall@10</th>
+      <th>recall@5</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>76</th>
+      <td>3609194402293569455</td>
+      <td>42</td>
+      <td>22</td>
+      <td>192</td>
+      <td>0.218750</td>
+      <td>0.114583</td>
+    </tr>
+    <tr>
+      <th>17</th>
+      <td>-2626634673110551643</td>
+      <td>39</td>
+      <td>16</td>
+      <td>134</td>
+      <td>0.291045</td>
+      <td>0.119403</td>
+    </tr>
+    <tr>
+      <th>16</th>
+      <td>-1032019229384696495</td>
+      <td>31</td>
+      <td>22</td>
+      <td>130</td>
+      <td>0.238462</td>
+      <td>0.169231</td>
+    </tr>
+    <tr>
+      <th>10</th>
+      <td>-1443636648652872475</td>
+      <td>50</td>
+      <td>38</td>
+      <td>117</td>
+      <td>0.427350</td>
+      <td>0.324786</td>
+    </tr>
+    <tr>
+      <th>82</th>
+      <td>-2979881261169775358</td>
+      <td>49</td>
+      <td>32</td>
+      <td>88</td>
+      <td>0.556818</td>
+      <td>0.363636</td>
+    </tr>
+    <tr>
+      <th>161</th>
+      <td>-3596626804281480007</td>
+      <td>27</td>
+      <td>17</td>
+      <td>80</td>
+      <td>0.337500</td>
+      <td>0.212500</td>
+    </tr>
+    <tr>
+      <th>65</th>
+      <td>1116121227607581999</td>
+      <td>26</td>
+      <td>12</td>
+      <td>73</td>
+      <td>0.356164</td>
+      <td>0.164384</td>
+    </tr>
+    <tr>
+      <th>81</th>
+      <td>692689608292948411</td>
+      <td>20</td>
+      <td>12</td>
+      <td>69</td>
+      <td>0.289855</td>
+      <td>0.173913</td>
+    </tr>
+    <tr>
+      <th>106</th>
+      <td>-9016528795238256703</td>
+      <td>24</td>
+      <td>13</td>
+      <td>69</td>
+      <td>0.347826</td>
+      <td>0.188406</td>
+    </tr>
+    <tr>
+      <th>52</th>
+      <td>3636910968448833585</td>
+      <td>27</td>
+      <td>20</td>
+      <td>68</td>
+      <td>0.397059</td>
+      <td>0.294118</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+## Hybrid Recommender
+
+협업 필터링과 컨텐츠 기반 모형을 합치면 어떻게 될까? 더 정확한 추천을 할 수 있을까? 
+
+사실 하이브리드 방법론은 각각의 방법론보다 더 나은 성능을 보일 때가 많아서 연구자/실무자들 사이에서 많이 사용되고 있다. 
+
+간단한 하이브리드 방법론을 적용해보자. CF 점수에 컨텐츠 기반의 점수를 곱해서 정렬 후 사용한다
+
+
+```python
+class HybridRecommender:
+    
+    MODEL_NAME = 'Hybrid'
+    
+    def __init__(self, cb_rec_model, cf_rec_model, items_df):
+        self.cb_rec_model = cb_rec_model
+        self.cf_rec_model = cf_rec_model
+        self.items_df = items_df
+        
+    def get_model_name(self):
+        return self.MODEL_NAME
+    
+    def recommend_items(self, user_id, items_to_ignore=[], topn=10, verbose=False):
+        # 상위 1000개의 컨텐츠 기반 모형 추천을 가져온다
+        cb_recs = (self.cb_rec_model
+            .recommend_items(user_id, items_to_ignore=items_to_ignore, verbose=verbose, topn=1000)
+            .rename(columns={'recStrength': 'recStrengthCB'})
+        )
+        
+        # 상위 1000개의 협업필터링 추천을 가져온다
+        cf_recs = (self.cf_rec_model
+            .recommend_items(user_id, items_to_ignore=items_to_ignore, verbose=verbose, topn=1000)
+            .rename(columns={'recStrength': 'recStrengthCF'})
+        )
+        
+        # 1) 두 모형의 결과를 합친다
+        # 2) CF, CB 모형의 점수를 바탕으로 Hybrid 모형의 점수를 계산한다
+        # 3) Hybrid 점수를 기준으로 정렬한다
+        recommendations = (cb_recs
+            .merge(cf_recs, how='inner', left_on='contentId', right_on='contentId')
+            .assign(recStrengthHybrid = lambda d: d['recStrengthCB'] * d['recStrengthCF'])
+            .sort_values('recStrengthHybrid', ascending=False)
+            .head(topn)
+        )
+        
+        if verbose:
+            if self.items_df is None:
+                raise Exception('"items_df" is required in verbose mode')
+            
+            recommendations = (recommendations
+                .merge(self.items_df, how='left', left_on='contentId', right_on='contentId')
+                .loc[:, ['recStrengthHybrid', 'contentId', 'title', 'url', 'lang']]
+            )
+        
+        return recommendations
+```
+
+
+```python
+hybrid_recommender_model = HybridRecommender(content_based_model, cf_recommender_model, articles_df)
+```
+
+하이브리드 모형의 경우 **Recall@5**가 0.3834, **Recall@10**이 0.4975가 나왔다
+
+
+```python
+print('하이브리드 모형을 평가합니다')
+hybrid_global_metrics, hybrid_detailed_results = model_evaluator.evaluate_model(hybrid_recommender_model)
+print('Global Metrics:\n{}'.format(hybrid_global_metrics))
+hybrid_detailed_results.head(10)
+
+# 하이브리드 모형을 평가합니다
+# 1139 users processed
+# Global Metrics:
+# {'model_name': 'Hybrid', 'recall@5': 0.38340577857325492, 'recall@10': 0.49757095372027615}
+```
+
+
+<div>
+<table class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>_person_id</th>
+      <th>hits@10_count</th>
+      <th>hits@5_count</th>
+      <th>interacted_count</th>
+      <th>recall@10</th>
+      <th>recall@5</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>76</th>
+      <td>3609194402293569455</td>
+      <td>42</td>
+      <td>26</td>
+      <td>192</td>
+      <td>0.218750</td>
+      <td>0.135417</td>
+    </tr>
+    <tr>
+      <th>17</th>
+      <td>-2626634673110551643</td>
+      <td>38</td>
+      <td>26</td>
+      <td>134</td>
+      <td>0.283582</td>
+      <td>0.194030</td>
+    </tr>
+    <tr>
+      <th>16</th>
+      <td>-1032019229384696495</td>
+      <td>39</td>
+      <td>25</td>
+      <td>130</td>
+      <td>0.300000</td>
+      <td>0.192308</td>
+    </tr>
+    <tr>
+      <th>10</th>
+      <td>-1443636648652872475</td>
+      <td>54</td>
+      <td>37</td>
+      <td>117</td>
+      <td>0.461538</td>
+      <td>0.316239</td>
+    </tr>
+    <tr>
+      <th>82</th>
+      <td>-2979881261169775358</td>
+      <td>31</td>
+      <td>28</td>
+      <td>88</td>
+      <td>0.352273</td>
+      <td>0.318182</td>
+    </tr>
+    <tr>
+      <th>161</th>
+      <td>-3596626804281480007</td>
+      <td>27</td>
+      <td>19</td>
+      <td>80</td>
+      <td>0.337500</td>
+      <td>0.237500</td>
+    </tr>
+    <tr>
+      <th>65</th>
+      <td>1116121227607581999</td>
+      <td>25</td>
+      <td>14</td>
+      <td>73</td>
+      <td>0.342466</td>
+      <td>0.191781</td>
+    </tr>
+    <tr>
+      <th>81</th>
+      <td>692689608292948411</td>
+      <td>19</td>
+      <td>15</td>
+      <td>69</td>
+      <td>0.275362</td>
+      <td>0.217391</td>
+    </tr>
+    <tr>
+      <th>106</th>
+      <td>-9016528795238256703</td>
+      <td>16</td>
+      <td>11</td>
+      <td>69</td>
+      <td>0.231884</td>
+      <td>0.159420</td>
+    </tr>
+    <tr>
+      <th>52</th>
+      <td>3636910968448833585</td>
+      <td>20</td>
+      <td>16</td>
+      <td>68</td>
+      <td>0.294118</td>
+      <td>0.235294</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+
+# 모형 비교
+
+
+```python
+pd.DataFrame([pop_global_metrics, cf_global_metrics, 
+              cb_global_metrics, hybrid_global_metrics])
+```
+
+<div>
+<table class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>model_name</th>
+      <th>recall@10</th>
+      <th>recall@5</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>Popularity</td>
+      <td>0.346714</td>
+      <td>0.226285</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>Collaborative Filtering</td>
+      <td>0.397980</td>
+      <td>0.265533</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>Content-Based</td>
+      <td>0.494119</td>
+      <td>0.384173</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>Hybrid</td>
+      <td>0.497571</td>
+      <td>0.383406</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+
+# 마무리
+
+우리는 CI&T Deskdrop 데이터를 바탕으로 주요 추천 시스템 기법을 살펴보았다. 결과를 더 개선할 여지는 많다.
+
+- 이번 예시에서는 시간은 고려하지 않았다. 모든 시점의 데이터가 추천을 하는데 사용되었다. 특정한 시점의 기사로만 필터링하여 추천을 제공하는 것도 좋은 방법이다
+- 시간 (하루 중 시간대, 요일, 월), 장소, 기기 등 맥락을 반영하는 것도 좋다. 이러한 정보는 Learn-to-Rank 모형이나 로지스틱 모형을 통해 통합할 수 있다. [Outbrain Click Prediction](https://www.kaggle.com/c/outbrain-click-prediction/discussion/27897#157215) 문제를 푸는데 사용했던 방법을 참고하면 도움이 될 것이다.
+- 튜토리얼 작성을 목적으로 기본적인 컨셉의 모형들을 사용했다. 추천 시스템 관련 연구들을 보면 더 발전된 형태의 기법들이 존재한다. 개선된 행렬분해 방식이라든지 딥러닝을 활용하는 방식들이 논의되고 있다.
+
+추천 시스템의 가장 최신 기법들에 대해 알고 싶다면 [ACM RecSys Conference](https://recsys.acm.org/)를 살펴보자. 연구보단 실무자에 가깝다면, 협업필터링 프레임워크를 찾아보자. `surprise`, `mrec`, `python-recsys`, 분산처리를 위해서는 `Spark ALS Matrix Factorization` 같은 것들이 있다. 
+
+실제 프로덕션 수준의 추천 시스템에 대해서는 다음 [슬라이드](https://www.slideshare.net/gabrielspmoreira/discovering-users-topics-of-interest-in-recommender-systems-tdc-sp-2016)를 참고하면 좋다. 컨텐츠 기반 모형과 토픽모델링 기법들이 설명되어 있다.
