@@ -69,3 +69,105 @@ radon_mn.loc[:,'log_radon'].hist(bins=25)
 ```
 
 ![png](fig/radon_contamination_pystan/output_12_1.png)
+
+
+# 전통적인 접근방법
+
+라돈 노출을 모델링하는 전통적인 두 가지 접근방법은 bias-variance trade-off에서 말하는 양 극단을 표현한다.
+
+**Complete Pooling :**
+- 모든 카운티의 라돈 수준이 동일할 것이라고 가정한다
+- `y_i = alpha + beta * x_i + e_i`
+
+**No Pooling :**
+- 모든 카운티가 라돈 수준이 다를 (독립적일) 것이라고 가정한다
+- `y_i = alpha_ij + beta * x_i + e_i (j = 1, ..., 85)`
+
+## Complete Pooling
+
+모형을 stan으로 표현하기 위해서 `data` 블록을 작성하는 것부터 시작해보자. `data` 블록에는 다음과 같은 항목이 필요하다
+
+- **y** : log radon 수치로 구성된 벡터
+- **x** : 층
+- **N** : 샘플 수
+
+
+```python
+pooled_data = """
+data {
+  int<lower=0> N;
+  vector[N] x;
+  vector[N] y;
+}
+"""
+```
+
+이제 파라미터를 초기화해보자. 여기서는 선형 모형의 계수들과 정규분포의 scale parameter가 필요하다. scale parameter는 양수 범위로 제한한다는 점을 주의하자.
+
+
+```python
+pooled_parameters = """
+parameters {
+  vector[2] beta;
+  real<lower=0> sigma;
+}
+"""
+```
+
+마지막으로, log-radon 수치를 정규분포로부터 샘플링하도록 모형을 작성한다. 정규분포의 평균은 해당 가구의 층에 대한 함수로 작성한다
+
+
+```python
+pooled_model = """
+model {
+  y ~ normal(beta[1] + beta[2] * x, sigma);
+}
+"""
+```
+
+이제 `stan` 함수에 data, parameter, model을 넘긴다. 이 과정에서 추가로 제공해야 하는 정보들이 있는데, iteration을 몇 번 반복할 것인지, 몇 개의 병렬 체인을 사용할 것인지 등을 결정해야 한다. 여기서는 2체인으로 1000번 추출한다.
+
+
+```python
+log_radon = radon_mn['log_radon'].values
+floor_measure = radon_mn['floor'].values
+```
+
+
+```python
+pooled_data_dict = {
+    'N': len(log_radon),
+    'x': floor_measure,
+    'y': log_radon
+}
+
+pooled_fit = pystan.stan(
+    model_code=pooled_data + pooled_parameters + pooled_model,
+    data=pooled_data_dict,
+    iter=1000,
+    chains=2
+)
+```
+
+
+그래프를 그리거나 지표를 요약하기 위해 샘플을 추출할 수 있다
+
+
+```python
+pooled_sample = pooled_fit.extract(permuted=True)
+```
+
+
+```python
+b0, m0 = pooled_sample['beta'].T.mean(axis=1)
+
+(ggplot(radon_mn, aes(x='floor', y='log_radon')) +
+ geom_point() +
+ geom_abline(slope=m0, intercept=b0, color='orange', linetype='--', size=1.5) +
+ ylab('log_radon = log(radon + 0.1)') +
+ theme(figure_size=(10,6))
+)
+```
+
+
+![png](fig/radon_contamination_pystan/output_26_1.png)
