@@ -21,6 +21,7 @@
 ```python
 import pystan
 import pandas as pd
+from pandas.api.types import CategoricalDtype
 import numpy as np
 from plotnine import *
 
@@ -45,7 +46,9 @@ srrs_mn = (srrs
     .loc[lambda d: d.state=='MN']
     .rename(columns={'activity': 'radon'})
     .assign(fips = lambda d: d.stfips*1000 + d.cntyfips,
-            log_radon = lambda d: np.log(d.radon + 0.1))
+            log_radon = lambda d: np.log(d.radon + 0.1),
+            county = lambda d: d['county'].str.strip(),
+            county_code = lambda d: d.groupby('county').ngroup() + 1)
 )
 ```
 
@@ -171,3 +174,85 @@ b0, m0 = pooled_sample['beta'].T.mean(axis=1)
 
 
 ![png](fig/radon_contamination_pystan/output_26_1.png)
+
+## No Pooling
+
+완전 반대편의 접근법으로는, 모든 카운티 각각에 대해서 학습하는 방법이 있다. 층이 미치는 효과와 오차항 부분은 이전 모형과 동일하다
+
+
+```python
+unpooled_model = """
+data {
+  int<lower=0> N;
+  int<lower=1, upper=85> county[N];
+  vector[N] x;
+  vector[N] y;
+}
+parameters {
+  vector[85] a;
+  real beta;
+  real<lower=0, upper=100> sigma;
+}
+transformed parameters {
+  vector[N] y_hat;
+  
+  for (i in 1:N)
+    y_hat[i] <- beta * x[i] + a[county[i]];
+}
+model {
+  y ~ normal(y_hat, sigma);
+}
+"""
+```
+
+
+```python
+unpooled_data = {
+    'N': len(log_radon),
+    'county': radon_mn['county_code'].values,
+    'x': floor_measure,
+    'y': log_radon
+}
+```
+
+
+```python
+unpooled_fit = pystan.stan(
+    model_code=unpooled_model,
+    data = unpooled_data,
+    iter=1000,
+    chains=2
+)
+```
+
+
+```python
+unpooled_estimates = pd.DataFrame({
+    'county': radon_mn['county'].unique(),
+    'estimates': unpooled_fit['a'].mean(axis=0),
+    'se': unpooled_fit['a'].std(axis=0)
+})
+```
+
+
+```python
+# 그래프에서 county를 정렬하기 위한 Category 타입
+county_cate = CategoricalDtype(categories=unpooled_estimates.sort_values('estimates')['county'], 
+                               ordered=True)
+```
+
+
+```python
+(unpooled_estimates
+   .assign(county_cate = lambda d: d['county'].astype(county_cate))
+   .pipe(ggplot, aes(x='county_cate', y='estimates')) +
+    geom_errorbar(aes(ymax='estimates + se', ymin='estimates - se'), color='#999999') +
+    geom_point() +
+    ggtitle('Unpooled Model') +
+    xlab('County') + ylab('Radon Estimate') +
+    theme(figure_size=(12,6), axis_text_x=element_text(angle=90, size=7))
+)
+```
+
+
+![png](fig/radon_contamination_pystan/output_34_1.png)
