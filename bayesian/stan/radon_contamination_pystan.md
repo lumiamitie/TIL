@@ -256,3 +256,170 @@ county_cate = CategoricalDtype(categories=unpooled_estimates.sort_values('estima
 
 
 ![png](fig/radon_contamination_pystan/output_34_1.png)
+
+카운티별로 pooled 모형과 unpooled 모형의 추정 차이를 살펴보자. 샘플 수에 따라서 차이나는 정도가 달라진다
+
+
+```python
+sample_county_estimates = (unpooled_estimates
+  .loc[lambda d: d['county'].isin(('LAC QUI PARLE', 'AITKIN', 'KOOCHICHING', 
+                    'DOUGLAS', 'CLAY', 'STEARNS', 'RAMSEY', 'ST LOUIS'))]
+)
+```
+
+
+```python
+m = unpooled_fit['beta'].mean(axis=0)
+```
+
+
+```python
+(radon_mn
+  .loc[lambda d: d['county'].isin(('LAC QUI PARLE', 'AITKIN', 'KOOCHICHING', 
+                    'DOUGLAS', 'CLAY', 'STEARNS', 'RAMSEY', 'ST LOUIS'))]
+  .pipe(ggplot, aes(x='floor', y='log_radon')) +
+  geom_point() +
+  geom_abline(slope=m0, intercept=b0, color='orange', linetype='--', size=1) +
+  geom_abline(aes(intercept='estimates'), 
+              data=sample_county_estimates, slope=m, color='blue') +
+  facet_wrap('~ county', ncol=4) +
+  ylab('log_radon = log(radon + 0.1)') +
+  ggtitle('Unpooled Model') +
+  theme(figure_size=(10,6))
+)
+```
+
+
+![png](fig/radon_contamination_pystan/output_38_1.png)
+
+
+Pooling과 Unpooling 모형 모두 한계점이 있다.
+
+- 라돈 수치가 높은 지역을 탐색하려 한다면, Pooling 모형을 사용하는 것은 의미가 없다
+- Unpooled 모형의 수치를 사용할 때, 샘플 수가 적은 지역에 대해서는 신뢰할 수 없다
+
+
+# 다층 / 위계 모형
+
+Pooled 모형을 사용하는 것은 모든 데이터를 같은 모형으로부터 추출한다는 것을 의미한다. 이것은 (샘플링 과정에서 발생하는 변동에 비해 ) 추출 대상간의 차이를 무시한다.
+
+![image-pooled](http://f.cl.ly/items/0R1W063h1h0W2M2C0S3M/Screen%20Shot%202013-10-10%20at%208.22.21%20AM.png)
+
+Unpooled 모형을 통해 데이터를 분석하는 것은 각각의 모형에서 독립적으로 추출한다는 것을 의미한다. Pooled 모형과는 반대로 샘플링 단위 사이의 차이가 커져서 하나로 묶기 어렵다.
+
+![image-unpooled](http://f.cl.ly/items/38020n2t2Y2b1p3t0B0e/Screen%20Shot%202013-10-10%20at%208.23.36%20AM.png)
+
+**계층 모형**에서는 각각의 파라미터들을 특정한 분포로 부터 추출된 것으로 본다. 따라서 완전히 동일하지도 않고, 완전히 다르지도 않다. 이것을 바로 **Partial Pooling** 이라고 한다.
+
+![image-partialpooled](http://f.cl.ly/items/1B3U223i002y3V2W3r0W/Screen%20Shot%202013-10-10%20at%208.25.05%20AM.png)
+
+PyStan을 이용하면 다층 모형을 쉽게 구성할 수 있다. 그리고 Hamiltonian Monte Carlo를 통해 데이터를 학습시킨다.
+
+## Partial Pooling Model
+
+라돈 데이터셋을 위한 가장 단순한 partial pooling 모형은 추가적인 예측변수 없이 라돈 수준을 측정하는 것이다. Partial Pooling 모형은 Pooling 모형과 Unpooling 모형을 샘플 수를 기준으로 가중치를 부여하여 평균을 구한 형태가 된다. 
+
+- 샘플 수가 적은 카운티의 예측값은 전체 평균에 가까워진다
+- 샘플 수가 많은 카운티의 예측값은 Unpooled 모형의 예측값과 비슷해진다
+
+
+```python
+partial_pooling = """
+data {
+  int<lower=0> N;
+  int<lower=1,upper=85> county[N];
+  vector[N] y;
+}
+parameters {
+  vector[85] a;
+  real mu_a;
+  real<lower=0,upper=100> sigma_a;
+  real<lower=0,upper=100> sigma_y;
+}
+transformed parameters {
+  vector[N] y_hat;
+  for (i in 1:N)
+    y_hat[i] <- a[county[i]];
+}
+model {
+  mu_a ~ normal(0, 1);
+  a ~ normal(10 * mu_a, sigma_a);
+  y ~ normal(y_hat, sigma_y);
+}
+"""
+```
+
+두 개의 표준편차가 존재한다는 점에 주목하자. 하나는 관측치의 오차를 설명하고 다른 하나는 카운티간의 변동성을 나타낸다.
+
+
+```python
+partial_pooled_data = {
+    'N': len(log_radon),
+    'county': radon_mn['county_code'].values,
+    'y': log_radon
+}
+```
+
+
+```python
+partial_pooled_fit = pystan.stan(
+    model_code=partial_pooling,
+    data=partial_pooled_data,
+    iter=1000,
+    chains=2
+)
+```
+
+
+```python
+county_meta = (radon_mn
+    .groupby(['county_code', 'county'], as_index=False)['idnum']
+    .count()
+    .rename(columns={'idnum': 'nvalue'})
+    .reset_index()
+    .drop(columns='index')
+)
+```
+
+
+```python
+partial_pooled_estimates = pd.DataFrame({
+    'county_code': county_meta['county_code'],
+    'county': county_meta['county'],
+    'nvalue': county_meta['nvalue'],
+    'estimates': partial_pooled_fit['a'].mean(axis=0),
+    'se': partial_pooled_fit['a'].std(axis=0),
+    'model_type': 'Partial Pooling'
+})
+```
+
+
+```python
+# 그래프를 그리기 위해 Partial Pooling 모형과 Unpooled 모형의 결과물을 합친다
+model_estimates = pd.concat([
+    partial_pooled_estimates, 
+    unpooled_estimates
+      .assign(county_code = lambda d: d.index + 1, 
+              model_type = 'Unpooled',
+              nvalue = county_meta['nvalue'] )
+], sort=False)
+```
+
+아래 그래프에서 두 모형의 결과물을 비교해보면, 두 모형의 차이는 주로 샘플 사이즈가 적은 카운티에서 발생한다는 것을 확인할 수 있다. Unpooled 모형이 좀 더 극단적이고 부정확하다.
+
+
+```python
+(ggplot(model_estimates, aes(x='nvalue', y='estimates')) +
+ geom_errorbar(aes(ymax='estimates + se', ymin='estimates - se'), 
+               color='steelblue', alpha = 0.5, width=0) +
+ geom_point(color='steelblue') +
+ geom_hline(yintercept=partial_pooled_fit['a'].mean(), linetype='--') +
+ facet_wrap('~ model_type') +
+ scale_x_sqrt() +
+ xlab('number of observations by county') +
+ theme(figure_size=(12,6))
+)
+```
+
+
+![png](fig/radon_contamination_pystan/output_52_1.png)
