@@ -423,3 +423,159 @@ model_estimates = pd.concat([
 
 
 ![png](fig/radon_contamination_pystan/output_52_1.png)
+
+
+## Varying Intercept Model
+
+이 모형에서는 random effect에 의해 카운티에 따라 다른 절편을 갖도록 한다. 
+
+```
+y_i =  a_ji + beta * x_i + e_i
+
+where e_i ~ N(0, (sigma_y)^2)
+a_ji ~ N(mu_a, (sigma_a)^2)
+```
+
+No-pooling 모형과 마찬가지로 카운티별로 절편값을 다르게 한다. 하지만 다층모형에서는 각 카운티에 대해서 서로 다른 회귀모형을 구하는 것이 아니라, 서로 다른 카운티에 대해서도 영향력을 공유한다. 따라서 데이터가 적은 카운티에서도 어느 정도 합리적인 추론을 할 수 있다.
+
+
+```python
+varying_intercept_model = """
+data {
+  int<lower=0> J;
+  int<lower=0> N;
+  int<lower=1,upper=J> county[N];
+  vector[N] x;
+  vector[N] y;
+}
+parameters {
+  vector[J] a;
+  real b;
+  real mu_a;
+  real<lower=0,upper=100> sigma_a;
+  real<lower=0,upper=100> sigma_y;
+}
+transformed parameters {
+  vector[N] y_hat;
+  for (i in 1:N)
+    y_hat[i] <- a[county[i]] + x[i] * b;
+}
+model {
+  sigma_a ~ uniform(0, 100);
+  a ~ normal(mu_a, sigma_a);
+  b ~ normal(0, 1);
+  sigma_y ~ uniform(0, 100);
+  y ~ normal(y_hat, sigma_y);
+}
+"""
+```
+
+
+```python
+varying_intercept_data = {
+    'N': len(log_radon),
+    'J': len(radon_mn['county_code'].unique()),
+    'county': radon_mn['county_code'].values,
+    'x': floor_measure,
+    'y': log_radon
+}
+```
+
+
+```python
+varying_intercept_fit = pystan.stan(
+    model_code=varying_intercept_model,
+    data=varying_intercept_data,
+    iter=1000,
+    chains=2
+)
+```
+
+
+```python
+(pd.DataFrame(
+    data=varying_intercept_fit['a'], 
+    columns=county_meta['county']
+ ).melt(value_name='intercept')
+  .pipe(ggplot, aes(x='county', y='intercept')) +
+  geom_boxplot(outlier_alpha=0.3, outlier_size=1) +
+  ggtitle('Varying Intercept Model') +
+  theme(figure_size=(12,6), axis_text_x=element_text(angle=90, size=7))
+)
+```
+
+![png](fig/radon_contamination_pystan/output_58_1.png)
+
+
+```python
+varying_intercept_fit.plot(pars=['sigma_a', 'b'])
+```
+
+![png](fig/radon_contamination_pystan/output_59_0.png)
+
+
+`floor` 계수의 값은 약 -0.66이다. 이것은 모든 카운티에 대해서 고려해본 결과, 지하실이 없는 집의 경우 라돈수치가 절반 정도 낮아진다는 것을 의미한다. (`exp(-0.66) = 0.52`)
+
+
+```python
+varying_intercept_fit['b'].mean()
+# -0.66164167753054792
+```
+
+```python
+varying_intercept_estimates = pd.DataFrame({
+    'county': county_meta['county'],
+    'intercept': varying_intercept_fit['a'].mean(axis=0),
+    'slope': varying_intercept_fit['b'].mean()
+})
+```
+
+
+```python
+(varying_intercept_estimates
+   .assign(x1 = lambda d: d['intercept'] + d['slope'])
+   .loc[:, ['county', 'intercept', 'x1']]
+   .melt(id_vars='county', value_vars=['intercept', 'x1'])
+   .assign(xb = lambda d: d['variable'] == 'x1',
+           x = lambda d: d['xb'].astype(int))
+   .loc[:, ['county', 'x', 'value']]
+   .pipe(ggplot, aes(x='x', y='value', group='county')) +
+   geom_point(color='steelblue', alpha = 0.5) +
+   geom_line(color='steelblue', alpha = 0.5) +
+   theme(figure_size=(10,6))
+)
+```
+
+
+![png](fig/radon_contamination_pystan/output_63_1.png)
+
+
+Partial Pooling 모형이 적어도 샘플 수가 적은 카운티에 대해서는 Pooled 모형이나 Unpooled 모형보다 나은 결과를 제공한다는 것을 쉽게 확인할 수 있다.
+
+
+```python
+varying_intercept_target = (varying_intercept_estimates
+    .loc[lambda d: d['county'].isin(('LAC QUI PARLE', 'AITKIN', 'KOOCHICHING', 
+        'DOUGLAS', 'CLAY', 'STEARNS', 'RAMSEY', 'ST LOUIS'))]
+)
+```
+
+
+```python
+(radon_mn
+  .loc[lambda d: d['county'].isin(('LAC QUI PARLE', 'AITKIN', 'KOOCHICHING', 
+                    'DOUGLAS', 'CLAY', 'STEARNS', 'RAMSEY', 'ST LOUIS'))]
+  .pipe(ggplot, aes(x='floor', y='log_radon')) +
+  geom_point() +
+  geom_abline(slope=m0, intercept=b0, color='orange', linetype='--', size=1) +
+  geom_abline(aes(intercept='intercept', slope='slope'), 
+              data=varying_intercept_target, 
+              color='blue') +
+  facet_wrap('~ county', ncol=4) +
+  ylab('log_radon = log(radon + 0.1)') +
+  ggtitle('Varying Intercept Model') +
+  theme(figure_size=(10,6))
+)
+```
+
+![png](fig/radon_contamination_pystan/output_66_1.png)
