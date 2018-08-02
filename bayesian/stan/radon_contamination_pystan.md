@@ -12,7 +12,7 @@
 
 라돈 수치는 가구마다 다르다. 80,000 가구의 라돈 수치를 조사했다. 중요한 두 가지 변수는 다음과 같다.
 
-- 지하실 / 1층의 수치 (보통 지하실의 라돈 수치가 높다)
+- 측정장소의 위치 (지하실 또는 1층, 보통 지하실의 라돈 수치가 높다)
 - 카운티의 우라늄 수치 (라돈 수치와 상관관계가 있다)
 
 미네소타 주의 라돈 수치를 중심으로 살펴보자. 이 예제에서 hierarchy는 카운티 내의 가구들이다
@@ -514,7 +514,7 @@ varying_intercept_fit.plot(pars=['sigma_a', 'b'])
 ![png](fig/radon_contamination_pystan/output_59_0.png)
 
 
-`floor` 계수의 값은 약 -0.66이다. 이것은 모든 카운티에 대해서 고려해본 결과, 지하실이 없는 집의 경우 라돈수치가 절반 정도 낮아진다는 것을 의미한다. (`exp(-0.66) = 0.52`)
+`floor` 계수의 값은 약 -0.66이다. 이것은 모든 카운티에 대해서 고려해본 결과, 지하실이 아닌 곳에서 측정하는 경우 라돈수치가 절반 정도 낮아진다는 것을 의미한다. (`exp(-0.66) = 0.52`)
 
 
 ```python
@@ -579,3 +579,105 @@ varying_intercept_target = (varying_intercept_estimates
 ```
 
 ![png](fig/radon_contamination_pystan/output_66_1.png)
+
+
+## Varying Slope Model
+
+카운티별로 측정장소가 미치는 영향이 다른 것을 반영하는 모형을 구성할 수도 있다. 
+
+```
+y_i = alpha + beta_ji * x_i + e_i
+```
+
+
+```python
+varying_slope_model = """
+data {
+  int<lower=0> J;
+  int<lower=0> N;
+  int<lower=1, upper=J> county[N];
+  vector[N] x;
+  vector[N] y;
+}
+parameters {
+  real a;
+  vector[J] b;
+  real mu_b;
+  real<lower=0,upper=100> sigma_b;
+  real<lower=0,upper=100> sigma_y;
+}
+transformed parameters {
+  vector[N] y_hat;
+  for (i in 1:N)
+    y_hat[i] <- a + x[i] * b[county[i]];
+}
+model {
+  sigma_b ~ uniform(0, 100);
+  b ~ normal(mu_b, sigma_b);
+  a ~ normal(0, 1);
+  sigma_y ~ uniform(0, 100);
+  y ~ normal(y_hat, sigma_y);
+}
+"""
+```
+
+
+```python
+varying_slope_data = {
+    'N': len(log_radon),
+    'J': len(radon_mn['county_code'].unique()),
+    'county': radon_mn['county_code'].values,
+    'x': floor_measure,
+    'y': log_radon
+}
+```
+
+
+```python
+varying_slope_fit = pystan.stan(
+    model_code=varying_slope_model,
+    data=varying_slope_data,
+    iter=1000,
+    chains=2
+)
+```
+
+
+```python
+(pd.DataFrame(
+    data=varying_slope_fit['b'], 
+    columns=county_meta['county']
+ ).melt(value_name='slope')
+  .pipe(ggplot, aes(x='county', y='slope')) +
+  geom_boxplot(outlier_alpha=0.3, outlier_size=1) +
+  ggtitle('Varying slope Model') +
+  theme(figure_size=(12,6), axis_text_x=element_text(angle=90, size=7))
+)
+```
+
+![png](fig/radon_contamination_pystan/output_72_1.png)
+
+```python
+varying_slope_estimates = pd.DataFrame({
+    'county': county_meta['county'],
+    'intercept': varying_slope_fit['a'].mean(),
+    'slope': varying_slope_fit['b'].mean(axis=0)
+})
+```
+
+```python
+(varying_slope_estimates
+   .assign(x1 = lambda d: d['intercept'] + d['slope'])
+   .loc[:, ['county', 'intercept', 'x1']]
+   .melt(id_vars='county', value_vars=['intercept', 'x1'])
+   .assign(xb = lambda d: d['variable'] == 'x1',
+           x = lambda d: d['xb'].astype(int))
+   .loc[:, ['county', 'x', 'value']]
+   .pipe(ggplot, aes(x='x', y='value', group='county')) +
+   geom_point(color='steelblue', alpha = 0.5) +
+   geom_line(color='steelblue', alpha = 0.5) +
+   theme(figure_size=(10,6))
+)
+```
+
+![png](fig/radon_contamination_pystan/output_74_1.png)
