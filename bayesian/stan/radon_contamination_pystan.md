@@ -681,3 +681,90 @@ varying_slope_estimates = pd.DataFrame({
 ```
 
 ![png](fig/radon_contamination_pystan/output_74_1.png)
+
+## Varying intercept and slope model
+
+가장 일반화된 모형은 카운티에 따라 기울기와 절편 모두 변하는 것이다.
+
+```
+y_i = alpha_ji + beta_ji * x_i + e_i
+```
+
+
+```python
+varying_intercept_slope_model = """
+data {
+  int<lower=0> N;
+  int<lower=0> J;
+  vector[N] y;
+  vector[N] x;
+  int county[N];
+}
+parameters {
+  real<lower=0> sigma;
+  real<lower=0> sigma_a;
+  real<lower=0> sigma_b;
+  vector[J] a;
+  vector[J] b;
+  real mu_a;
+  real mu_b;
+}
+model {
+  mu_a ~ normal(0, 100);
+  mu_b ~ normal(0, 100);
+  
+  a ~ normal(mu_a, sigma_a);
+  b ~ normal(mu_b, sigma_b);
+  y ~ normal(a[county] + b[county].*x, sigma);
+}
+"""
+```
+
+
+```python
+varying_intercept_slope_data = {
+    'N': len(log_radon),
+    'J': len(radon_mn['county_code'].unique()),
+    'county': radon_mn['county_code'].values,
+    'x': floor_measure,
+    'y': log_radon
+}
+```
+
+
+```python
+varying_intercept_slope_fit = pystan.stan(
+    model_code=varying_intercept_slope_model,
+    data=varying_intercept_slope_data,
+    iter=1000,
+    chains=2
+)
+```
+
+
+```python
+varying_intercept_slope_estimates = pd.DataFrame({
+    'county': county_meta['county'],
+    'intercept': varying_intercept_slope_fit['a'].mean(axis=0),
+    'slope': varying_intercept_slope_fit['b'].mean(axis=0)
+})
+```
+
+
+```python
+(varying_intercept_slope_estimates
+   .assign(x1 = lambda d: d['intercept'] + d['slope'])
+   .loc[:, ['county', 'intercept', 'x1']]
+   .melt(id_vars='county', value_vars=['intercept', 'x1'])
+   .assign(xb = lambda d: d['variable'] == 'x1',
+           x = lambda d: d['xb'].astype(int))
+   .loc[:, ['county', 'x', 'value']]
+   .pipe(ggplot, aes(x='x', y='value', group='county')) +
+   geom_point(color='steelblue', alpha = 0.5) +
+   geom_line(color='steelblue', alpha = 0.5) +
+   theme(figure_size=(10,6))
+)
+```
+
+
+![png](fig/radon_contamination_pystan/output_81_1.png)
