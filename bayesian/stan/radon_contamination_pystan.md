@@ -768,3 +768,113 @@ varying_intercept_slope_estimates = pd.DataFrame({
 
 
 ![png](fig/radon_contamination_pystan/output_81_1.png)
+
+## 그룹 단위의 예측 변수 추가하기
+
+다층모형의 주요 장점 중 하나는 다양한 단계에서 예측 변수를 동시에 처리할 수 있다는 것이다. 위 모형의 varying intercept 모형을 가지고 생각해보자
+
+```
+y_i =  a_ji + beta * x_i + e_i
+```
+
+여기서 라돈 수치의 기대값에 random effect를 추가하는 대신, 카운티 레벨의 공변량을 가지는 회귀 모형을 추가할 수 있다. 여기서는 라돈 수치에 영향을 미칠 것으로 예상되는 카운티별 우라늄 농도를 `u_j`고 표기하여 사용하자.
+
+(참고. 공변량은 그 자체로 관심을 갖는 변수는 아니지만, 종속변수에 영향을 주는 독립변수다. [링크](https://statkclee.github.io/statistics/stat-modeling.html#fnref2) )
+
+```
+a_j = r0 + r1 * u_j + zeta_j
+
+zeta_j ~ N(0, (sigma_a)^2)
+```
+
+이제 가구 단위의 변수 (floor 또는 basement) 뿐만 아니라 카운티 단위의 변수 (우라늄) 까지 모형에 포함하게 되었다! 
+
+모형에 각 카운티별 가변수가 있는데 카운티 단위의 공변량까지 추가되었다. 고전적인 회귀분석이라면 이러한 방식으로 모형을 구성할 경우 다중공선성 문제가 발생한다. 다층모형의 경우에는 intercept를 추정하기 위해 partial pooling을 사용하면서 다중공선선 문제를 피해갈 수 있다.
+
+그룹단위의 변수를 추가하면 그룹단위의 변동량(`sigma_a`)을 감소시키는 역할을 한다. 이 말은 그룹단위의 변수를 사용하는 것이 더 강한 Pooling을 유도한다는 것이다.
+
+
+```python
+hierarchical_intercept_model = """
+data {
+  int<lower=0> J;
+  int<lower=0> N;
+  int<lower=0,upper=J> county[N];
+  vector[N] u;
+  vector[N] x;
+  vector[N] y;
+}
+parameters {
+  vector[J] a;
+  vector[2] b;
+  real mu_a;
+  real<lower=0,upper=100> sigma_a;
+  real<lower=0,upper=100> sigma_y;
+}
+transformed parameters {
+  vector[N] y_hat;
+  vector[N] m;
+  
+  for (i in 1:N) {
+    m[i] <- a[county[i]] + u[i] * b[1];
+    y_hat[i] <- m[i] + x[i] * b[2];
+  }
+}
+model {
+  mu_a ~ normal(0, 1);
+  a ~ normal(mu_a, sigma_a);
+  b ~ normal(0, 1);
+  y ~ normal(y_hat, sigma_y);
+}
+"""
+```
+
+
+```python
+hierarchical_intercept_data = {
+    'N': len(log_radon),
+    'J': len(radon_mn['county_code'].unique()),
+    'u': np.log(radon_mn['Uppm']),
+    'county': radon_mn['county_code'].values,
+    'x': floor_measure,
+    'y': log_radon
+}
+```
+
+
+```python
+hierarchical_intercept_fit = pystan.stan(
+    model_code=hierarchical_intercept_model,
+    data=hierarchical_intercept_data,
+    iter=1000,
+    chains=2
+)
+```
+
+
+```python
+hierarchical_intercept_estimates = pd.DataFrame({
+    'uranium': np.log(radon_mn['Uppm']),
+    'm_mean': hierarchical_intercept_fit['m'].mean(axis=0),
+    'm_se': hierarchical_intercept_fit['m'].std(axis=0)
+})
+```
+
+Intercept의 표준오차가 그룹 단위 공변량을 사용하지 않았던 partial pooling 모형에 비해 더 작은 것을 볼 수 있다.
+
+
+```python
+(ggplot(hierarchical_intercept_estimates, aes(x='uranium', y='m_mean')) +
+ geom_abline(intercept=hierarchical_intercept_fit['mu_a'].mean(), 
+            slope=hierarchical_intercept_fit['b'][:, 0].mean(),
+            linetype='--', color='#999999') +
+ geom_errorbar(aes(ymax='m_mean + m_se', ymin='m_mean - m_se'), 
+               color='steelblue', alpha = 0.5, width=0) +
+ geom_point(color='steelblue') +
+ xlab('County Level Uranium') +
+ theme(figure_size=(12,6))
+)
+```
+
+
+![png](fig/radon_contamination_pystan/output_89_1.png)
