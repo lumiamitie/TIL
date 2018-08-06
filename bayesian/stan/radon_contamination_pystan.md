@@ -878,3 +878,91 @@ Intercept의 표준오차가 그룹 단위 공변량을 사용하지 않았던 p
 
 
 ![png](fig/radon_contamination_pystan/output_89_1.png)
+
+
+### 각 단계간의 상관관계
+
+여러 단계의 예측 변수를 사용할 경우, 개별 수준의 변수와 그룹 잔차 사이에 상관관계가 존재할 수 있다. 이러한 효과를 모형에 반영하기 위해 예측 변수 각각의 평균을 공변량으로 모형에 포함시킬 수 있다.
+
+```
+a_j = r0 + r1*u_j + r2*x_bar + zeta_j
+```
+
+일반적으로는 **contextual effects** 라고 한다.
+
+
+```python
+xbar = radon_mn.groupby('county_code')['floor'].mean().values
+x_mean = xbar[radon_mn['county_code'].apply(lambda d: d - 1)]
+```
+
+
+```python
+contextual_effect_model = """
+data {
+  int<lower=0> J;
+  int<lower=0> N;
+  int<lower=0,upper=J> county[N];
+  vector[N] u;
+  vector[N] x;
+  vector[N] x_mean;
+  vector[N] y;
+}
+parameters {
+  vector[J] a;
+  vector[3] b;
+  real mu_a;
+  real<lower=0,upper=100> sigma_a;
+  real<lower=0,upper=100> sigma_y;
+}
+transformed parameters {
+  vector[N] y_hat;
+  for (i in 1:N)
+    y_hat[i] <- a[county[i]] + u[i]*b[1] + x[i]*b[2] + x_mean[i]*b[3];
+}
+model {
+  mu_a ~ normal(0, 1);
+  a ~ normal(mu_a, sigma_a);
+  b ~ normal(0, 1);
+  y ~ normal(y_hat, sigma_y);
+}
+"""
+```
+
+
+```python
+contextual_effect_data = {
+    'N': len(log_radon),
+    'J': len(radon_mn['county_code'].unique()),
+    'u': np.log(radon_mn['Uppm']),
+    'county': radon_mn['county_code'].values,
+    'x': floor_measure,
+    'y': log_radon,
+    'x_mean': x_mean
+}
+```
+
+
+```python
+contextual_effect_fit = pystan.stan(
+    model_code=contextual_effect_model,
+    data=contextual_effect_data,
+    iter=1000,
+    chains=2
+)
+```
+
+
+```python
+contextual_effect_fit['b'].mean(0)
+# array([ 0.69743844, -0.68573736,  0.41952205])
+```
+
+```python
+contextual_effect_fit.plot('b')
+```
+
+![png](fig/radon_contamination_pystan/output_97_0.png)
+
+
+위 결과로부터 알 수 있는 것은 지하실이 없는 가구의 비중이 높은 곳일수록 라돈의 수치가 높은 편이라는 것이다. 아마 토양의 성질에 영향을 받았을 수도 있다. 토양의 성질이 건물의 구조를 결정하는데 영향을 줄 수 있기 때문이다.
