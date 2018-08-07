@@ -966,3 +966,119 @@ contextual_effect_fit.plot('b')
 
 
 위 결과로부터 알 수 있는 것은 지하실이 없는 가구의 비중이 높은 곳일수록 라돈의 수치가 높은 편이라는 것이다. 아마 토양의 성질에 영향을 받았을 수도 있다. 토양의 성질이 건물의 구조를 결정하는데 영향을 줄 수 있기 때문이다.
+
+# 예측하기
+
+겔만 (2006) 은 unpooled, pooled, partial-pooled 모형의 예측 오차를 구하기 위해 cross validation 기법을 사용했다.
+
+다층 모형의 경우 두 가지 종류의 예측이 존재한다
+
+- 존재하는 그룹 내의 새로운 관측값
+- 새로운 그룹의 새로운 관측값
+
+예를 들면, St. Louis 카운티에 지하실이 없는 집의 수치를 예측해보려고 한다. 이 경우에는 적절한 intercept 값을 사용해서 모형으로부터 샘플을 추출하면 된다
+
+
+```python
+# St. Louis 카운티의 county_code 값
+county_meta.loc[lambda d: d['county'] == 'ST LOUIS', 'county_code'].values[0]
+# 70
+```
+
+다시 말하면 다음과 같다
+
+```
+y_pred_i ~ Normal(alpha_70 + beta(x_i=1), (sigma_y)^2)
+```
+
+stan에서 위 작업을 수행할 때는 코드 몇 줄을 추가해주면 된다.
+
+
+```python
+contextual_pred_model = """
+data {
+  int<lower=0> J;
+  int<lower=0> N;
+  int<lower=0,upper=J> stl;
+  real u_stl;
+  real xbar_stl;
+  int<lower=1,upper=J> county[N];
+  vector[N] u;
+  vector[N] x;
+  vector[N] x_mean;
+  vector[N] y;
+}
+parameters {
+  vector[J] a;
+  vector[3] b;
+  real mu_a;
+  real<lower=0,upper=100> sigma_a;
+  real<lower=0,upper=100> sigma_y;
+}
+transformed parameters {
+  vector[N] y_hat;
+  real stl_mu;
+  
+  for (i in 1:N)
+    y_hat[i] <- a[county[i]] + u[i]*b[1] + x[i]*b[2] + x_mean[i]*b[3];
+    
+  stl_mu <- a[stl] + u_stl*b[1] + b[2] + xbar_stl*b[3];
+}
+model {
+  mu_a ~ normal(0, 1);
+  a ~ normal(mu_a, sigma_a);
+  b ~ normal(0, 1);
+  y ~ normal(y_hat, sigma_y);
+}
+generated quantities {
+  real y_stl;
+  
+  y_stl <- normal_rng(stl_mu, sigma_y);
+}
+"""
+```
+
+
+```python
+contextual_pred_data = {
+    'N': len(log_radon),
+    'J': len(radon_mn['county_code'].unique()),
+    'u': np.log(radon_mn['Uppm']),
+    'county': radon_mn['county_code'].values,
+    'x': floor_measure,
+    'x_mean': x_mean,
+    'y': log_radon,
+    'stl': 70,
+    'u_stl': cty.loc[lambda d: d['st']=='MN'].loc[lambda d: d['cty']=='STLOUIS', 'Uppm'].values[0],
+    'xbar_stl': xbar[70-1]
+}
+```
+
+```python
+contextual_pred_fit = pystan.stan(
+    model_code=contextual_pred_model,
+    data=contextual_pred_data,
+    iter=1000,
+    chains=2
+)
+```
+
+```python
+contextual_pred_fit.plot('y_stl')
+```
+
+![png](fig/radon_contamination_pystan/output_106_0.png)
+
+
+# 다층 모형의 장점
+
+- 관측하려는 데이터의 자연스러운 계층 구조를 반영할 수 있다
+- 데이터 수가 적은 그룹에 대한 계수 추정을 할 수 있다
+- 그룹 수준으로 모형을 구성할 때, 개별 관측치에 대한 정보와 그룹 정보를 통합할 수 있다
+- 그룹간 개별 관측치 계수의 변동성을 모형에 포함할 수 있다
+
+# References
+
+Gelman, A., & Hill, J. (2006). Data Analysis Using Regression and Multilevel/Hierarchical Models (1st ed.). Cambridge University Press.
+
+Gelman, A. (2006). Multilevel (Hierarchical) modeling: what it can and cannot do. Technometrics, 48(3), 432–435.
