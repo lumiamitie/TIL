@@ -41,4 +41,24 @@ df_future_predict %>%
   select(ds, yhat, yhat_lower, yhat_upper)
 
 plot(m, df_future_predict)
+
+
+# Box-Cox Transformation
+trans_bc = caret::BoxCoxTrans(tr_sunspot$y + 0.0001)
+
+tr_sunspot_boxcox = df_sunspot %>% 
+  mutate(y = predict(trans_bc, y)) %>% 
+  select(ds, y) %>% 
+  slice(tr_index)
+
+ts_sunspot_boxcox = df_sunspot %>% 
+  mutate(y = predict(trans_bc, y)) %>% 
+  select(ds, y) %>% 
+  slice(ts_index)
+
+m_bc = prophet(tr_sunspot_boxcox)
+df_future_range_bc = make_future_dataframe(m_bc, periods = 30, freq = 'year')
+df_future_predict_bc = predict(m_bc, df_future_range_bc) %>% tbl_df()
+
+plot(m, df_future_predict)
 ```
