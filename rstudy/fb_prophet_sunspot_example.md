@@ -62,3 +62,6 @@ df_future_predict_bc = predict(m_bc, df_future_range_bc) %>% tbl_df()
 
 plot(m, df_future_predict)
 ```
+
+TODO : 다음 링크를 정리해보자
+<https://medium.com/open-machine-learning-course/open-machine-learning-course-topic-9-part-3-predicting-the-future-with-facebook-prophet-3f3af145cdc>
