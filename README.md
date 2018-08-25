@@ -14,6 +14,8 @@
     - [Recommender Systems in Python 101](https://github.com/lumiamitie/TIL/blob/master/python/recsys_in_python_101.md)
 - 책 정리
     - [Bayesian Methods for Hackers](https://github.com/lumiamitie/TIL/tree/master/bayesian/bayesian_method_for_hackers)
+- 강의 정리
+    - [Datacamp : Network Analysis in R](https://github.com/lumiamitie/TIL/blob/master/rstudy/igraph_introduction_to_networks.md)
 - 문제상황 해결
     - [Scipy 에러 해결하기](https://github.com/lumiamitie/TIL/blob/master/python/scipy_error_180801.md)
     - [R 패키지 설치중 강제종료로 인한 LOCK 문제 해결하기](https://github.com/lumiamitie/TIL/blob/master/rstudy/package_lock.md)
