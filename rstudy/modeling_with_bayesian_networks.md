@@ -177,3 +177,411 @@ heat_alarm_model1 = parametric.em(heat_alarm_dag1, data_latent, data_imputed, it
 # Standard deviation of the residuals: 0.05823308 
 ```
 
+값을 샘플링해서 그래프를 통해 살펴보자
+
+```r
+heat_alarm_model1 %>% 
+  impute(data = data_latent, method = 'bayes-lw') %>% 
+  gather('Sensor', 'Measure') %>% 
+  ggplot(aes(x = Measure, color = Sensor)) +
+    geom_density()
+```
+
+![png](fig/modeling_with_bayesian_networks/output05.png)
+
+모형에서 Intercept 값을 보면 뭔가 잘못된 것 같다. 또, 그래프를 보면 Temp 변수만 완전히 다른 분포를 보이고 있다. Temp 변수에 다른 Prior를 적용해보자. 
+
+```r
+statistics = data_latent %>% 
+  gather('Sensor', 'Measure', TS1:TS3) %>% 
+  summarise(mu = mean(Measure),
+            sigma = sd(Measure))
+
+data_imputed2 = data_latent %>% 
+  rowwise() %>% 
+  mutate(Temp = rnorm(1, statistics$mu, statistics$sigma))
+```
+
+```r
+data_imputed2 %>% 
+  ggplot(aes(x = Temp)) +
+  geom_density()
+```
+
+![png](fig/modeling_with_bayesian_networks/output06.png)
+
+```r
+heat_alarm_model2 = parametric.em(heat_alarm_dag1, data_latent, data_imputed2, iter = 10)
+
+#   Bayesian network parameters
+# 
+#   Parameters of node Temp (Gaussian distribution)
+# 
+# Conditional density: Temp
+# Coefficients:
+# (Intercept)  
+#     22.2041  
+# Standard deviation of the residuals: 0.4415202 
+# 
+#   Parameters of node TS1 (Gaussian distribution)
+# 
+# Conditional density: TS1 | Temp
+# Coefficients:
+# (Intercept)         Temp  
+#  -242.96255     11.70836  
+# Standard deviation of the residuals: 0.04593405 
+# 
+#   Parameters of node TS2 (Gaussian distribution)
+# 
+# Conditional density: TS2 | Temp
+# Coefficients:
+# (Intercept)         Temp  
+#  -261.21640     12.94082  
+# Standard deviation of the residuals: 0.05076922 
+# 
+#   Parameters of node TS3 (Gaussian distribution)
+# 
+# Conditional density: TS3 | Temp
+# Coefficients:
+# (Intercept)         Temp  
+#  -256.94301     12.57108  
+# Standard deviation of the residuals: 0.04931867 
+```
+
+```r
+heat_alarm_model2 %>% 
+  impute(data = data_latent, method = 'bayes-lw') %>% 
+  gather('Sensor', 'Measure') %>% 
+  ggplot(aes(x = Measure, color = Sensor)) +
+    geom_density()
+```
+
+![png](fig/modeling_with_bayesian_networks/output07.png)
+
+이번에도 잘못된 prior을 사용했는지 결과가 좋지 않다. 이번에는 더 나은 모형을 위해 실제 센서값에 종속적이도록 prior를 구성한다.
+
+```r
+data_imputed3 = data_latent %>% 
+  rowwise() %>% 
+  mutate(Temp = mean(TS1, TS2, TS3))
+```
+
+```r
+data_imputed3 %>% 
+  ggplot(aes(x = Temp)) +
+  geom_density()
+```
+
+![png](fig/modeling_with_bayesian_networks/output08.png)
+
+```r
+heat_alarm_model3 = parametric.em(heat_alarm_dag1, data_latent, data_imputed3, iter = 10)
+
+#   Bayesian network parameters
+# 
+#   Parameters of node Temp (Gaussian distribution)
+# 
+# Conditional density: Temp
+# Coefficients:
+# (Intercept)  
+#    17.00291  
+# Standard deviation of the residuals: 5.151672 
+# 
+#   Parameters of node TS1 (Gaussian distribution)
+# 
+# Conditional density: TS1 | Temp
+# Coefficients:
+# (Intercept)         Temp  
+# -0.05070602   1.00345967  
+# Standard deviation of the residuals: 0.04395342 
+# 
+#   Parameters of node TS2 (Gaussian distribution)
+# 
+# Conditional density: TS2 | Temp
+# Coefficients:
+# (Intercept)         Temp  
+#    7.265119     1.109087  
+# Standard deviation of the residuals: 0.0485801 
+# 
+#   Parameters of node TS3 (Gaussian distribution)
+# 
+# Conditional density: TS3 | Temp
+# Coefficients:
+# (Intercept)         Temp  
+#    3.867602     1.077399  
+# Standard deviation of the residuals: 0.0471921 
+```
+
+```r
+heat_alarm_model3 %>% 
+  impute(data = data_latent, method = 'bayes-lw') %>% 
+  gather('Sensor', 'Measure') %>% 
+  ggplot(aes(x = Measure, color = Sensor)) +
+    geom_density()
+```
+
+![png](fig/modeling_with_bayesian_networks/output09.png)
+
+이제 잘 학습된 것 같다. 센서값의 분포가 latent Temp 변수를 선형 변환한 형태가 되었다.
+
+
+# Modeling Domain
+
+데이터를 살펴보다보면 시간에 따라서 분포가 달라지기도 한다. 이러한 도메인 정보를 추가하면 더 나은 모형을 구축하는데 도움이 된다.
+
+우선 월별 정보를 추가해보자.
+
+```r
+data_by_month = data_raw %>% 
+  mutate(Month = as.factor(month(Date, label = TRUE, abbr = TRUE)))
+```
+
+```r
+data_by_month %>% 
+  gather("Sensor", "Measure", TS1, TS2, TS3) %>%
+  ggplot(aes(x = Measure, color = Sensor, fill = Sensor)) + 
+    geom_density(alpha = 0.5) +
+    facet_wrap(~ Month)
+```
+
+![png](fig/modeling_with_bayesian_networks/output10.png)
+
+그래프를 보면 월별 정보가 분포에 대한 추가적인 정보를 줄 수 있을 것으로 보인다. 이 경우에는 월별 정보를 Temp 변수의 이산형 부모 변수로 추가하면 데이터를 더 잘 학습시킬 수 있을 것이다. 하지만 그렇게 하면 12개의 서로 다른 정규분포에 대한 파라미터가 필요하다. 그건 조금 과한 것 같다.
+
+월별 정보를 조금 더 낮은 차원으로 낮추어 요약할 수 없을까? 날씨에 대해 생각해보면 가장 먼저 떠오르는 것은 계절일 것이다. 계절별로 다른 분포를 적용해보자.
+
+```r
+data_by_season = data_by_month %>%
+  mutate(
+    date2012 = as.Date(strftime(Date, format="2012-%m-%d")),
+    Season = case_when(
+      date2012 >= as.Date('2012-12-15') | date2012 < as.Date('2012-03-15') ~ 'winter',
+      date2012 >= as.Date('2012-03-15') & date2012 < as.Date('2012-06-15') ~ 'spring',
+      date2012 >= as.Date('2012-06-15') & date2012 < as.Date('2012-09-15') ~ 'summer',
+      TRUE ~ 'fall'),
+    Season = factor(Season)
+  ) %>% 
+  select(-date2012)
+```
+
+```r
+data_by_season %>% 
+  gather('Sensor', 'Measure', TS1, TS2, TS3) %>%
+  ggplot(aes(x = Measure, color = Sensor, fill = Sensor)) + 
+    geom_density(alpha = 0.5) +
+    facet_wrap(~ Season)
+```
+
+![png](fig/modeling_with_bayesian_networks/output11.png)
+
+각 계절별 분포는 정규분포처럼 보이진 않지만, 같은 패턴을 가진다. 월별, 계절별 두 네트워크를 학습시키고 파라미터가 잘 학습되는지 확인해보자.
+
+먼저 월별 모형이다.
+
+```r
+data_latent_month = data_by_month %>% 
+  mutate(Temp = NA_real_) %>% 
+  select(Month, Temp, TS1, TS2, TS3) %>%
+  as.data.frame()
+```
+
+네트워크 DAG를 구성한다.
+
+```r
+heat_alarm_dag_month = model2network('[Month][Temp|Month][TS1|Temp][TS2|Temp][TS3|Temp]')
+plot(heat_alarm_dag_month)
+```
+
+![png](fig/modeling_with_bayesian_networks/output12.png)
+
+EM 알고리즘을 적용하여 숨겨진 변수의 분포를 나타내는 파라미터를 유도한다.
+
+```r
+data_imputed_month = data_latent_month %>% 
+  rowwise() %>% 
+  mutate(Temp = mean(c(TS1, TS2, TS3))) %>% 
+  as.data.frame()
+```
+
+```r
+heat_alarm_model_month = parametric.em(heat_alarm_dag_month, data_latent_month, data_imputed_month, iter = 10)
+
+#   Bayesian network parameters
+# 
+#   Parameters of node Month (ordinal distribution)
+# 
+# Conditional probability table:
+#           1          2          3          4          5          6
+#  0.08469945 0.07923497 0.08469945 0.08196721 0.08469945 0.08196721 
+#           7          8          9         10         11         12 
+#  0.08469945 0.08469945 0.08196721 0.08469945 0.08196721 0.08469945 
+# 
+#   Parameters of node Temp (conditional Gaussian distribution)
+# 
+# Conditional density: Temp | Month
+# Coefficients:
+#                     0         1         2         3         4         5
+# (Intercept)  17.10762  17.32978  17.86328  19.75084  21.81250  25.52818
+#                     6         7         8         9        10        11
+# (Intercept)  28.38999  28.24101  26.79861  23.68272  18.05335  15.86617
+# Standard deviation of the residuals:
+#        0         1         2         3         4         5
+# 3.214897  3.625582  3.940742  3.142792  3.113433  2.525933  
+#        6         7         8         9        10        11
+# 2.139447  2.031236  3.082260  2.429373  3.596838  2.573902  
+# Discrete parents' configurations:
+#     Month
+# 0       1
+# 1       2
+# 2       3
+# 3       4
+# 4       5
+# 5       6
+# 6       7
+# 7       8
+# 8       9
+# 9      10
+# 10     11
+# 11     12
+# 
+#   Parameters of node TS1 (Gaussian distribution)
+# 
+# Conditional density: TS1 | Temp
+# Coefficients:
+# (Intercept)         Temp  
+#  -3.8736470    0.9616823  
+# Standard deviation of the residuals: 0.0818937 
+# 
+#   Parameters of node TS2 (Gaussian distribution)
+# 
+# Conditional density: TS2 | Temp
+# Coefficients:
+# (Intercept)         Temp  
+#    3.039763     1.062912  
+# Standard deviation of the residuals: 0.09051409 
+# 
+#   Parameters of node TS3 (Gaussian distribution)
+# 
+# Conditional density: TS3 | Temp
+# Coefficients:
+# (Intercept)         Temp  
+#   -0.237029     1.032543  
+# Standard deviation of the residuals: 0.08792797
+```
+
+```r
+data_impute_month_posterior = impute(heat_alarm_model_month, data = data_latent_month, method = 'bayes-lw')
+```
+
+```r
+data_impute_month_posterior %>% 
+  gather('Sensor', 'Measure', Temp, TS1, TS2, TS3) %>%
+  ggplot(aes(x = Measure, color = Sensor, fill = Sensor)) + 
+    geom_density(alpha = 0.5) +
+    facet_wrap(~ Month)
+```
+
+![png](fig/modeling_with_bayesian_networks/output13.png)
+
+이번에는 학습이 꽤 잘됐다. Temp 변수가 TS3과 거의 유사하고, 다른 두 변수는 해당 변수를 변환한 형태가 되었다. 계절을 사용하는 것은 어떨지 확인해보자.
+
+```r
+data_latent_season = data_by_season %>% 
+  mutate(Temp = NA_real_) %>% 
+  select(Season, Temp, TS1, TS2, TS3) %>% 
+  as.data.frame()
+```
+
+```r
+heat_alarm_dag_season = model2network('[Season][Temp|Season][TS1|Temp][TS2|Temp][TS3|Temp]')
+plot(heat_alarm_dag_season)
+```
+
+![png](fig/modeling_with_bayesian_networks/output14.png)
+
+```r
+data_imputed_season = data_latent_season %>% 
+  rowwise() %>% 
+  mutate(Temp = mean(c(TS1, TS2, TS3))) %>% 
+  as.data.frame()
+```
+
+```r
+heat_alarm_model_season = parametric.em(heat_alarm_dag_season, data_latent_season, data_imputed_season, iter = 10)
+
+#   Bayesian network parameters
+# 
+#   Parameters of node Season (multinomial distribution)
+# 
+# Conditional probability table:
+#       fall    spring    summer    winter 
+# 0.2486339 0.2513661 0.2513661 0.2486339 
+# 
+#   Parameters of node Temp (conditional Gaussian distribution)
+# 
+# Conditional density: Temp | Season
+# Coefficients:
+#                     0         1         2         3
+# (Intercept)  21.01400  21.17159  28.02136  16.69815
+# Standard deviation of the residuals:
+#        0         1         2         3  
+# 4.372325  3.781638  2.434635  3.447969  
+# Discrete parents' configurations:
+#    Season
+# 0    fall
+# 1  spring
+# 2  summer
+# 3  winter
+# 
+#   Parameters of node TS1 (Gaussian distribution)
+# 
+# Conditional density: TS1 | Temp
+# Coefficients:
+# (Intercept)         Temp  
+#  -3.7755244    0.9560571  
+# Standard deviation of the residuals: 0.07837023 
+# 
+#   Parameters of node TS2 (Gaussian distribution)
+# 
+# Conditional density: TS2 | Temp
+# Coefficients:
+# (Intercept)         Temp  
+#    3.148215     1.056695  
+# Standard deviation of the residuals: 0.08661972 
+# 
+#   Parameters of node TS3 (Gaussian distribution)
+# 
+# Conditional density: TS3 | Temp
+# Coefficients:
+# (Intercept)         Temp  
+#  -0.1316762    1.0265035  
+# Standard deviation of the residuals: 0.08414488 
+```
+
+```r
+data_impute_season_posterior = impute(heat_alarm_model_season, data = data_latent_season, method = 'bayes-lw')
+```
+
+```r
+data_impute_season_posterior %>% 
+  gather('Sensor', 'Measure', Temp, TS1, TS2, TS3) %>%
+  ggplot(aes(x = Measure, color = Sensor, fill = Sensor)) + 
+    geom_density(alpha = 0.5) +
+    facet_wrap(~ Season)
+```
+
+![png](fig/modeling_with_bayesian_networks/output15.png)
+
+이것도 잘 학습되었다. 어떤 접근방법이 더 좋을까? 우선은 계절 모형이 더 나을 것 같다. 월별 모형에 비해서 파라미터 개수가 더 적기 때문이다. BIC 점수를 살펴보자
+
+```r
+BIC(heat_alarm_model_season, data_impute_season_posterior)
+# [1] -1497.113
+```
+
+```r
+BIC(heat_alarm_model_month, data_impute_month_posterior)
+# [1] -5206.456
+```
+
+BIC 점수를 보면 계절 모형의 점수가 더 좋은 것을 확인할 수 있다. bnlearn 라이브러리의 `BIC.bn()` 함수는 -1/2로 리스케일되었기 때문에 기존 BIC 점수와는 다르게 클수록 더 좋은 값을 나타낸다. 따라서 계절 모형을 사용하는 것으로 한다.
