@@ -585,3 +585,126 @@ BIC(heat_alarm_model_month, data_impute_month_posterior)
 ```
 
 BIC 점수를 보면 계절 모형의 점수가 더 좋은 것을 확인할 수 있다. bnlearn 라이브러리의 `BIC.bn()` 함수는 -1/2로 리스케일되었기 때문에 기존 BIC 점수와는 다르게 클수록 더 좋은 값을 나타낸다. 따라서 계절 모형을 사용하는 것으로 한다.
+
+# Modeling Anomalies
+
+베이지안 네트워크가 가지는 장점 중 하나는 모형에 전문 지식을 포함시킬 수 있다는 것이다. 다른 프레임워크에서는 매우 어려운 일이지만, 베이지안 네트워크에서는 자연스럽게 처리할 수 있다.
+
+흔히들 BN을 오픈 박스 모형이라고 한다. 파라미터 값을 이해하고 해석할 수 있기 때문이다. 이러한 특성은 이상값을 탐지하는데 유용하다. 잠재변수와 전문지식을 통해 일반적으로 잘 등장하지 않는 이벤트를 표현할 수 있다. 
+
+잘 발생하지 않는 사건이라면 데이터를 통해서는 학습할 수 없다. 데이터를 수집해야 한다면 기계를 부수거나 방에 불을 질러야 한다. 이렇게 데이터를 모은다면 엄청난 비용이 든다. 희귀병이나 자율주행, 금융사고 등도 이와 비슷한 경우다.
+
+`Alarm` 이라는 변수를 추가하여 전체적으로 발생할 수 있는 오류를 모델링해보자. 이 변수는 yes 또는 no의 값을 가질 수 있다. 1년 동안 데이터를 수집하면서 한 번도 문제가 발생한 적이 없다고 가정해보자. 그렇다면 `Alarm` 변수의 값은 항상 **no** 일 것이다.
+
+```r
+data_latent_alarm = data_latent_season %>%
+  mutate(Alarm = factor('no', levels = c('no', 'yes'))) %>%
+  select(Alarm, Season, Temp, TS1, TS2, TS3) %>%
+  as.data.frame()
+```
+
+```r
+heat_alarm_dag_alarm = model2network('[Alarm][Season][Temp|Season:Alarm][TS1|Temp][TS2|Temp][TS3|Temp]')
+plot(heat_alarm_dag_alarm)
+```
+
+EM 알고리즘을 다시 돌려보자. 파라미터 값이 변하지는 않겠지만, 논리 구조를 더 강화시킬 수 있다.
+
+```r
+data_imputed_alarm = data_latent_alarm %>% 
+  rowwise() %>% 
+  mutate(Temp = mean(c(TS1, TS2, TS3))) %>% 
+  as.data.frame()
+```
+
+```r
+heat_alarm_model_alarm = parametric.em(heat_alarm_dag_alarm, data_latent_alarm, data_imputed_alarm, iter = 10)
+```
+
+`Alarm` 변수의 결과를 살펴보자
+
+```r
+heat_alarm_model_alarm$Alarm
+
+#   Parameters of node Alarm (multinomial distribution)
+# 
+# Conditional probability table:
+#   no yes 
+#   1   0 
+```
+
+모든 경우에 대해서 알람이 울리지 않는 것으로 학습된 것을 볼 수 있다. 이제 전문 지식을 추가해볼 차례다. 우리는 전문가를 통해 해당 변수의 적당한 파라미터 값을 파악할 수 있었다.
+
+> 시스템은 1/1000 의 확률로 오류가 발생할 수 있다. 그러한 경우에는 온도가 빠르게 10도 가량 상승한다.
+
+전문 지식을 `Alarm` 변수에 반영해보자. `Temp` 변수에 추가적인 파라미터가 포함되어야 한다.
+
+```r
+cpt_alarm = coef(heat_alarm_model_alarm$Alarm)
+# no yes 
+#  1   0 
+
+cpt_alarm[] = c(0.999, 0.001) # table class를 유지하기 위해 cpt_alarm[] 에 값을 대입
+
+heat_alarm_model_alarm$Alarm = cpt_alarm
+#   Parameters of node Alarm (multinomial distribution)
+# 
+# Conditional probability table:
+#     no   yes 
+# 0.999 0.001 
+```
+
+`Temp` 변수는 조금 더 복잡하다
+
+```r
+cgauss_temp = coef(heat_alarm_model_alarm$Temp)
+#                    0   1        2   3        4   5        6   7
+# (Intercept) 21.01192 NaN 21.16248 NaN 28.02392 NaN 16.68349 NaN
+
+sd_temp = heat_alarm_model_alarm$Temp$sd
+#        0        1        2        3        4        5        6        7 
+# 4.372354      NaN 3.763531      NaN 2.448182      NaN 3.419937      NaN 
+
+cgauss_temp[is.nan(cgauss_temp)] = cgauss_temp[!is.nan(cgauss_temp)] + 10
+sd_temp[is.nan(sd_temp)] = sd_temp[!is.nan(sd_temp)]
+
+heat_alarm_model_alarm$Temp = list(coef = cgauss_temp, sd = sd_temp)
+
+#   Parameters of node Temp (conditional Gaussian distribution)
+# 
+# Conditional density: Temp | Alarm + Season
+# Coefficients:
+#                     0         1         2         3         4         5         6         7
+# (Intercept)  21.01192  31.01192  21.16248  31.16248  28.02392  38.02392  16.68349  26.68349
+# Standard deviation of the residuals:
+#        0         1         2         3         4         5         6         7  
+# 4.372354  4.372354  3.763531  3.763531  2.448182  2.448182  3.419937  3.419937  
+# Discrete parents' configurations:
+#    Alarm  Season
+# 0     no    fall
+# 1    yes    fall
+# 2     no  spring
+# 3    yes  spring
+# 4     no  summer
+# 5    yes  summer
+# 6     no  winter
+# 7    yes  winter
+```
+
+이제 이상치 탐지 기법이 포함된 완전한 모형이 완성되었다. 몇 가지 쿼리를 날려보자.
+
+```r
+e = list('Season' = 'winter', 'TS1' = 23, 'TS2' = 33, 'TS3' = 29)
+query = cpquery(heat_alarm_model_alarm, event = (Alarm == 'yes'), evidence = e, method = 'lw', n = 100000)
+mean(rep(query, 10000)) # [1] 0.228908
+```
+
+이 온도는 겨울치고는 너무 높기 때문에, 알람이 발생할 확률이 높게 계산된다.
+
+```r
+e2 = list('Season' = 'summer', 'TS1' = 23, 'TS2' = 33, 'TS3' = 29)
+query2 = cpquery(heat_alarm_model_alarm, event = (Alarm == 'yes'), evidence = e2, method = 'lw', n = 100000)
+mean(rep(query2, 10000)) # [1] 0
+```
+
+여름에는 잘 맞는 온도기 때문에 확률값이 0이 나왔다. 
