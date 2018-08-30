@@ -608,6 +608,8 @@ heat_alarm_dag_alarm = model2network('[Alarm][Season][Temp|Season:Alarm][TS1|Tem
 plot(heat_alarm_dag_alarm)
 ```
 
+![png](fig/modeling_with_bayesian_networks/output16.png)
+
 EM 알고리즘을 다시 돌려보자. 파라미터 값이 변하지는 않겠지만, 논리 구조를 더 강화시킬 수 있다.
 
 ```r
@@ -708,3 +710,30 @@ mean(rep(query2, 10000)) # [1] 0
 ```
 
 여름에는 잘 맞는 온도기 때문에 확률값이 0이 나왔다. 
+
+# More Anomalies
+
+각 센서별로 발생할 수 있는 오작동에 대한 모델링을 추가할 수 있다. 그러한 경우에는 온도가 특이한 날인지 기계가 오작동한 것인지 판단할 수 있어야 한다.
+
+흔히 사용하는 방법은 각 센서에 대해서 오작동 여부에 대한 확률 분포를 나타내는 숨겨진 이산형 변수를 추가하는 것이다.
+
+```r
+# 새로 추가하는 변수
+TS1_fault_states = list(No = 'No', Yes = 'Yes')
+
+data_latent_ts1fault = data_latent_season %>% 
+  mutate(Alarm = factor('no', levels = c('no', 'yes')),
+         TS1Fault = factor('no', levels = c('no', 'yes'))) %>% 
+  select(Alarm, Season, Temp, TS1Fault, TS1, TS2, TS3) %>% 
+  as.data.frame()
+
+data_imputed_ts1fault = data_latent_ts1fault %>% 
+  rowwise() %>% 
+  mutate(Temp = mean(c(TS1, TS2, TS3))) %>% 
+  as.data.frame()
+
+heat_alarm_dag_ts1fault = model2network('[Alarm][Season][TS1Fault][Temp|Season:Alarm][TS1|Temp:TS1Fault][TS2|Temp][TS3|Temp]')
+
+plot(heat_alarm_dag_ts1fault)
+```
+![png](fig/modeling_with_bayesian_networks/output17.png)
