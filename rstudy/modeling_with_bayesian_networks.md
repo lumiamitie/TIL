@@ -737,3 +737,76 @@ heat_alarm_dag_ts1fault = model2network('[Alarm][Season][TS1Fault][Temp|Season:A
 plot(heat_alarm_dag_ts1fault)
 ```
 ![png](fig/modeling_with_bayesian_networks/output17.png)
+
+노드의 확률값을 수정하고 (`Alarm`과 `TS1Fault`) EM 알고리즘을 동작시켜보자. 관련된 도메인 지식이 추가로 필요하다. IoT 팀에 센서의 오차가 얼마나 되는지 문의했다. 다음과 같은 답변을 얻었다.
+
+> 우리 센서는 좋기 때문에 거의 오류를 내지 않습니다. 테스터들은 1/1000 정도의 확률이라고 생각합니다.
+
+괜찮은 것 같다. 새로 추가한 노드는 모형의 다른 부분에 노이즈를 발생시키지 않으면서 이상치를 탐지한다. 
+
+```r
+heat_alarm_model_alarm2 = parametric.em(heat_alarm_dag_ts1fault, data_latent_ts1fault, data_imputed_ts1fault, iter = 10)
+cpt_alarm[] = c(0.999, 0.001)
+heat_alarm_model_alarm2$Alarm = cpt_alarm
+cgauss_temp = coef(heat_alarm_model_alarm2$Temp)
+sd_temp = heat_alarm_model_alarm2$Temp$sd
+
+cgauss_temp[is.nan(cgauss_temp)] = cgauss_temp[!is.nan(cgauss_temp)] + 10
+sd_temp[is.nan(sd_temp)] = sd_temp[!is.nan(sd_temp)]
+
+heat_alarm_model_alarm2$Temp = list(coef = cgauss_temp, sd = sd_temp)
+```
+
+```r
+cpt_TS1_fault = coef(heat_alarm_model_alarm2$TS1Fault)
+
+cpt_TS1_fault
+# no yes 
+#  1   0 
+
+cpt_TS1_fault[] <- c(0.9999, 0.0001)
+heat_alarm_model_alarm2$TS1Fault <- cpt_TS1_fault
+
+heat_alarm_model_alarm2$TS1Fault
+#   Parameters of node TS1Fault (multinomial distribution)
+# 
+# Conditional probability table:
+#      no    yes 
+# 0.9999 0.0001 
+```
+
+이제 TS1 노드에 확률 변수를 반영해야 한다. 분산이 큰 정규분포를 적용한다.
+
+```r
+cgauss_ts1 = coef(heat_alarm_model_alarm2$TS1)
+#                      0   1
+# (Intercept) -3.7039785 NaN
+# Temp         0.9524747 NaN
+
+sd_ts1 = heat_alarm_model_alarm2$TS1$sd
+#          0          1 
+# 0.08420779        NaN 
+```
+
+```r
+cgauss_ts1[is.nan(cgauss_ts1)] = 0
+sd_ts1[is.nan(sd_ts1)] = 100000
+
+heat_alarm_model_alarm2$TS1 = list(coef = cgauss_ts1, sd = sd_ts1)
+
+heat_alarm_model_alarm2$TS1
+#   Parameters of node TS1 (conditional Gaussian distribution)
+# 
+# Conditional density: TS1 | Temp + TS1Fault
+# Coefficients:
+#                       0           1
+# (Intercept)  -3.7039785   0.0000000
+# Temp          0.9524747   0.0000000
+# Standard deviation of the residuals:
+#            0             1  
+# 8.420779e-02  1.000000e+05  
+# Discrete parents' configurations:
+#    TS1Fault
+# 0        no
+# 1       yes
+```
