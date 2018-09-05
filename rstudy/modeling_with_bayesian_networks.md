@@ -810,3 +810,11 @@ heat_alarm_model_alarm2$TS1
 # 0        no
 # 1       yes
 ```
+
+TS1 센서가 오작동하거나 이상한 신호가 잡히는 경우에 대해서 테스트해보자. TS1 센서만 온도가 높게 나온다면 fault node가 작동되어 이상 상황을 감지할 것이다.
+
+```r
+e_ts1_fault = list('Season' = 'winter', 'TS1' = 35, 'TS2' = 24, 'TS3' = 20)
+query_ts1_fault = cpquery(heat_alarm_model_alarm2, event = Alarm == 'yes', evidence = e_ts1_fault, method = 'lw', n = 100000)
+mean(rep(query_ts1_fault, 10000))
+```
