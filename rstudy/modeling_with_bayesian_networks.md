@@ -790,7 +790,7 @@ sd_ts1 = heat_alarm_model_alarm2$TS1$sd
 
 ```r
 cgauss_ts1[is.nan(cgauss_ts1)] = 0
-sd_ts1[is.nan(sd_ts1)] = 100000
+sd_ts1[is.nan(sd_ts1)] = 1000000
 
 heat_alarm_model_alarm2$TS1 = list(coef = cgauss_ts1, sd = sd_ts1)
 
@@ -800,11 +800,11 @@ heat_alarm_model_alarm2$TS1
 # Conditional density: TS1 | Temp + TS1Fault
 # Coefficients:
 #                       0           1
-# (Intercept)  -3.7039785   0.0000000
-# Temp          0.9524747   0.0000000
+# (Intercept)  -3.7587808   0.0000000
+# Temp          0.9556061   0.0000000
 # Standard deviation of the residuals:
 #            0             1  
-# 8.420779e-02  1.000000e+05  
+# 9.212668e-02  1.000000e+06  
 # Discrete parents' configurations:
 #    TS1Fault
 # 0        no
@@ -817,4 +817,47 @@ TS1 센서가 오작동하거나 이상한 신호가 잡히는 경우에 대해�
 e_ts1_fault = list('Season' = 'winter', 'TS1' = 35, 'TS2' = 24, 'TS3' = 20)
 query_ts1_fault = cpquery(heat_alarm_model_alarm2, event = Alarm == 'yes', evidence = e_ts1_fault, method = 'lw', n = 100000)
 mean(rep(query_ts1_fault, 10000))
+# [1] 4.269994e-05
 ```
+
+```r
+query_ts1_fault_2 = cpquery(heat_alarm_model_alarm2, event = TS1Fault == 'yes', evidence = e_ts1_fault, method = 'lw', n = 100000)
+mean(rep(query_ts1_fault_2, 10000))
+# [1] 0.5104616
+```
+
+만약 세 개의 센서에서 온도가 모두 높게 나온다면, TS1Fault 노드는 모형 바깥의 문제라고 판단할 것이다
+
+```r
+e_outlier = list('Season' = 'winter', 'TS1' = 35, 'TS2' = 37, 'TS3' = 29)
+query_outlier = cpquery(heat_alarm_model_alarm2, event = Alarm == 'yes', evidence = e_outlier, method = 'lw', n = 100000)
+mean(rep(query_outlier, 10000))
+# [1] 0.9734272
+```
+
+```r
+query_outlier2 = cpquery(heat_alarm_model_alarm2, event = TS1Fault == 'yes', evidence = e_outlier, method = 'lw', n = 100000)
+mean(rep(query_outlier2, 10000))
+# [1] 0
+```
+
+# A more complex problem
+
+조금 변형된 문제를 다루어보자. 
+
+```r
+data_raw2 = read_csv('https://raw.githubusercontent.com/jacintoArias/bayesnetRtutorial/master/data/heatAlarm-lvl2.csv')
+```
+
+측정값들은 어느 정도 서로 종속적인 것처럼 보이지만, 이전의 문제만큼 뚜렷하지는 않다.
+
+```r
+data_raw2 %>%
+  gather('Sensor', 'Measure', TS1, TS2, TS3) %>%
+  ggplot(aes(x = Date, y = Measure, group = Sensor, color = Sensor)) +
+  geom_smooth()
+```
+
+## Looking at the context
+
+> 전문가들이 말하기를 실내온도가 실외온도의 영향을 받는데, 창문과 문 근처가 특히 심하다고 한다. 방 안쪽의 온도가 훨씬 안정적이다.
