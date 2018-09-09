@@ -4,7 +4,7 @@
 
 ## 시즌1 (2018 6/1 - 9/8)
 
-2018-08-19 현재 80일차 진행중. 주요 결과물은 다음과 같습니다.
+주요 결과물은 다음과 같습니다.
 
 - 포스팅 정리
     - [Introduction to Stan](https://github.com/lumiamitie/TIL/blob/master/bayesian/stan/intro_to_stan.md)
@@ -12,6 +12,7 @@
     - [Introduction to Model Design](https://github.com/lumiamitie/TIL/blob/master/statistics/intro_to_model_design.md)
     - [Bipartite/Affiliation Network Data](https://github.com/lumiamitie/TIL/blob/master/rstudy/bipartite_network.md)
     - [Recommender Systems in Python 101](https://github.com/lumiamitie/TIL/blob/master/python/recsys_in_python_101.md)
+    - [Modeling With Bayeisan Networks : Problems](https://github.com/lumiamitie/TIL/blob/master/rstudy/modeling_with_bayesian_networks.md)
 - 책 정리
     - [Bayesian Methods for Hackers](https://github.com/lumiamitie/TIL/tree/master/bayesian/bayesian_method_for_hackers)
 - 강의 정리
