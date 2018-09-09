@@ -858,6 +858,29 @@ data_raw2 %>%
   geom_smooth()
 ```
 
+![png](fig/modeling_with_bayesian_networks/output18.png)
+
 ## Looking at the context
 
 > 전문가들이 말하기를 실내온도가 실외온도의 영향을 받는데, 창문과 문 근처가 특히 심하다고 한다. 방 안쪽의 온도가 훨씬 안정적이다.
+
+새로운 정보를 바탕으로 바깥에 새로운 센서를 두기로 하고 TS0 라고 이름 붙였다. 이제 모형에 새로운 컴포넌트를 추가하고, 실내와 실외 온도 정보를 반영할 수 있길 기대해보자. 
+
+
+## Adding new components to the model
+
+센서 정보를 모형에 추가하기 위해 추가적인 잠재 변수를 추가한다. 이제 모형은 `TInd` 와 `TOut` 이라는 두 개의 잠재변수를 포함한다. 각각 실내 온도와 실외 온도를 의미한다. 실내 온도는 실외 온도에 의존한다.
+
+```r
+heat_alarm_dag2 = model2network('[Alarm][Season][TOut|Season][TS0|TOut][TInd|TOut:Alarm][TS1|TInd][TS2|TInd][TS3|TInd]')
+
+plot(heat_alarm_dag2)
+```
+
+![png](fig/modeling_with_bayesian_networks/output19.png)
+
+새롭게 알게된 도메인 지식을 바탕으로 모형을 작성했다. 하지만 아직도 `TOut` 변수와 모형의 관계에 대해서는 명확하게 알지 못한다. 분포를 자세히 보면 모든 분포가 실외 기온에 동일하게 영향을 받는 것이 아니라는 것을 확인할 수 있다. IoT 팀에 다시 문의를 넣어보았다.
+
+> IoT 팀 : 아 맞아요. TS1은 문 근처 구석에 설치되었구요. TS2는 천장에 설치했는데, 환기구 근처라 기계에서 나오는 열을 더 잡아낼 수도 있어요. TS3은 방의 중앙에 있어서 더 안정적일겁니다.
+
+시각화를 통해 확인했던 결과와 어느 정도 부합하는 것 같다. 하지만 이제는 서로 다른 구조에 대해서 테스트하는 과정이 필요하다. 후보 모델을 모두 구해서 BIC를 비교할 수도 있고, 학습 알고리즘을 통해 구하는 방법도 있다.
