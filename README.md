@@ -32,3 +32,5 @@
     - [R : ggplot2 파이차트](https://github.com/lumiamitie/TIL/blob/master/viz/ggplot2_piechart.md)
     - [R : 와플차트](https://github.com/lumiamitie/TIL/blob/master/viz/r_waffle.md)
 - 그외 잡다한 정보들
+
+## 시즌2 (2018-10-15 ~ 2019-01-22)
