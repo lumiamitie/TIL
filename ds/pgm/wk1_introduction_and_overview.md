@@ -95,3 +95,75 @@ Probabilistic graphical models과 관련된 세 가지 내용에 대해 학습�
 3. 학습
     - 파라미터와 구조
     - 완전한 데이터가 존재하는 경우 / 존재하지 않는 경우
+
+# Distribution
+
+Probabilistic graphical models에 대해 자세히 살펴보기 전에, 확률 분포에 대해 살펴보자.
+
+## Joint Distribution
+
+Intelligence(I), Difficulty(D), Grade(G) 라는 세 가지 변수가 있다고 가정해보자. 이 때, 세 가지 변수로 만들어 낼 수 있는 조합 각각에 대한 확률 분포를 구한 것을 Joint Distribution이라고 한다. I, D, G 변수가 각각 2, 3, 3 가지 조합이 가능하다면 이 분포의 파라미터는 총 12개가 된다 (2x3x3)
+
+## Independent parameters
+
+파라미터 중에서 다른 파라미터 값에 영향받지 않는 것들을 말한다. 위 경우에서 Independent parameter는 11개이다(12 - 1). 다른 11개의 파라미터를 알 고 있을 경우 마지막 파라미터의 값을 알 수 있기 때문이다.
+
+## Conditioning
+
+- Reduction
+    - 내가 관찰한 것(목표로 하는 변수)과 관련없는 것들은 제거한다
+- Renormalization
+    - *unnormalized* 상태라는 것은 합해서 1이 되지 않는다는 것이다
+    - unnormalized measure를 확률 분포로 변환시키려면 normalize 해야 한다.
+    - 모든 항목의 합을 구하고 해당 값으로 모든 항목을 나눈다
+    - P(I, D, G=g1) => P(I, D | g1)
+
+## Marginalization
+
+다양한 변수들에 대한 확률 분포를 알고 있는 상황에서, 더 적은 변수들에 대한 확률 분포를 계산하는 것을 말한다.
+
+ex. P(I, D)를 알고 있을 때 D에 대한 모든 값을 합할 경우 P(I)를 알 수 있다.
+
+
+# Factor
+
+## Factor는 무엇일까?
+
+Factor는 **함수**이거나 **표**다.
+
+- 여러 개의 argument를 받는다
+- 확률 변수가 주어지면 각각에 대한 값을 반환한다
+- X1부터 Xk 까지 확률 변수가 있다면, 각 변수로 만들어 낼 수 있는 모든 조합을 받고 각각의 조합에 대해 특정한 값을 반환한다
+- 이 때 {X1, ..., Xk} 를 이 factor의 **scope**라고 한다
+
+Factor의 예시는 다음과 같은 것들이 있다.
+
+- Joint Distribution은 factor이다. 
+    - P(I, D, G)의 모든 조합에 대해 확률값을 주기 때문이다.
+- normalized 되지 않은 P(I, D, g1)도 factor이다.
+    - 다만 이 경우에는 **scope가 {I, D}**가 된다. 
+- Conditional Probability Distribution (CPD)도 factor에 해당된다
+    - P( G | I,D )
+    - 모든 I, D의 조합에 대해서, G에 대한 확률분포를 가지고 있다는 것을 의미한다
+
+반환하는 값이 확률이 아닐 수도 있다. 이 경우 **general factor** 라고 한다.
+
+
+## Factor Operation
+
+- Factor Product
+    - 두 개의 factor를 받아서 곱한다
+    - ph1(A, B) : scope가 {A, B}인 factor
+    - ph2(B, C) : scope가 {B, C}인 factor
+    - ph1 * ph2 = scope가 {A, B, C}인 factor가 된다
+- Factor Marginalization
+    - 확률 분포에서의 Marginalization 과 비슷하다
+    - scope {A, B, C}인 factor가 있고 B에 대해서 Marginalization 할 경우 scope {A,C}인 factor가 된다
+- Factor Reduction
+    - C == c1 인 특정한 경우로만 필터링한다
+    - C에 대한 의존이 사라지기 때문에 scope {A, B}인 factor가 된다
+
+## 왜 factor를 사용할까?
+
+- 고차원 공간에서 분포를 구성하는 기본적인 단위로 사용된다
+- 다양한 operation을 통해 분포를 조작할 수 있다
