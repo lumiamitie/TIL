@@ -49,6 +49,16 @@
 
 베이지안 네트워크는 joint distribution을 표현한다고 했다. 어떻게 증명할 수 있을까?
 
-TODO
+다음과 같은 두 가지 항목을 만족하는지 확인해야 한다.
+
+1. P >= 0
+    - 확률 분포의 값은 0이 아닌 양수여야 한다
+    - P는 factor들의 product. 구체적으로는 CPD의 product인데, CPD는 non-negative하다
+    - non-negative factor들의 product 구하면 그 결과는 non-negative 하다
+2. SUM(P) = 1
+    - BN의 chain rule을 이용해 확률을 쪼갠다
+    - 쪼갠 값들을 계산해나가면 총합이 1이 된다는 것을 확인할 수 있다
+    - 여기서 계산을 위해 사용하는 트릭은 종종 사용하게 될 것
+
 
 ## Reasoning Patterns
