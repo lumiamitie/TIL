@@ -90,3 +90,38 @@ Intercausal Reasoning은 하나 이상의 원인들이 모여서 한 가지 효�
 
 위 예제에서는 두 노드가 하나의 결과 노드로 연결되어 있다. 이러한 경우는 추론하기가 어렵다. 또한 이러한 관계에서는 하위 노드에 조건을 걸게되면 두 상위 노드는 서로 독립적이지 않게 된다.
 
+
+## Flow of Probabilistic influence
+
+### When can X influence Y?
+
+변수 X는 어떤 상황에서 변수 Y에 영향을 미칠 수 있을까?
+
+- X -> Y (O)
+    - X와 Y가 연결되어 있고, X가 Y의 부모노드라면 X는 Y에 영향을 미친다
+- X <- Y (O)
+    - 반대의 경우도 마찬가지, Evidental Reasoning에 해당된다
+- X -> W -> Y (O)
+    - Causal Chain
+- X <- W <- Y (O)
+- X <- W -> Y (O)
+    - 동일한 원인이 두 가지 결과를 낳는 경우
+    - X를 관측할 경우, W에 영향을 미쳐서 Y에 간접적으로 영향을 미칠 수 있다
+- **X -> W <- Y (X)**
+    - 이러한 경우를 **V-structure**라고 한다
+    - 어떤 학생이 수업을 듣고 있는데 수업이 매우 어렵다고 해보자. 이러한 조건이 학생의 지능에 대한 추가적인 정보를 제공하는가? 그렇지 않다는 것을 알 수 있다.
+
+### Active Trails
+
+- 일반적으로 그래프에서 edge를 통해 순서대로 연결되어 있는 node를 **trail** 이라고 한다
+    - 여기서 말하는 edge는 undirected
+    - 따라서 어떤 방향으로든 이어질 수 있다
+- Active trail을 막는 유일한 경우는 V-structure
+
+### When can X influence Y Given evidence about Z
+
+- X -> Y, X <- Y (O)
+    - Z가 X, Y와는 관련이 없는 경우
+- 나머지 경우는 크게 두 가지로 나눌 수 있다
+    - W가 Z에 속하는 경우
+    - W가 Z에 속하지 않는 경우
