@@ -8,7 +8,6 @@
 
 ```python
 from sanic import Sanic
-from sanic.response import json
 from sanic.response import stream
 import MySQLdb
 from contextlib import contextmanager
