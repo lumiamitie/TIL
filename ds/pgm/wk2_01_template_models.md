@@ -144,3 +144,67 @@ Template 모형 중에서 자주 쓰이는 것 중 하나는 시간에 따른 �
 * DBN은 임의의 시점의 확률분포를 간결하게 표현하는 방법이다
 * Markov Assumption, Time Invariance 등의 가정을 바탕으로 한다
     * 현실을 더 잘 반영하기 위해 추가적인 변수를 반영해야 할 수 있다
+
+
+## Temporal Models - HMMs
+
+### Hidden Markov Models
+
+* Hidden Markov Models을 가장 단순한 형태로 표현해보면 다음과 같은 구조를 가진다
+    * 두 가지 변수가 존재한다
+        * A state variable S
+        * An observation variable O
+    * Transition Model
+        * S에서 S' 으로 transition이 발생한다
+    * Observation Model
+        * State가 주어졌을 때 우리가 어떻게 관측하게 될지 나타낸다
+* 내부 구조가 매우 다양하다
+    * 보통은 transition 과정에서 그러한 구조가 발생하지만, observation에서 발생하기도 한다
+    * State가 어떻게 transition 되는지 CPD를 통해 표현할 수도 있다 ( `P(S' | S )` )
+    * 단순하게 동일한 구조가 반복될 수도 있다
+* 다양한 분야에서 활용되고 있다
+    * Robot localization
+    * Speech recognition
+    * Biological sequence analysis
+    * Text annotation
+
+
+### Robot Localization
+
+* 로봇의 위치를 파악하는 HMM 모형을 살펴보자
+* 변수
+    * State Variable S
+        * 시간에 따른 로봇의 위치와 방향을 나타낸다 (position and orientation)
+    * External control signal U
+        * 로봇에 행한 명령 (왼쪽으로 이동, 오른쪽으로 이동 등등)
+        * 우리가 직접 관찰할 수 있고, 외부에서 주입되기 때문에 확률 변수 (stochastic random variable)가 아니다
+        * 그냥 시스템에 주어지는 input
+    * Observation variable O
+        * 관측된 로봇의 위치
+        * 로봇의 위치뿐만 아니라 지도상의 위치에도 영향을 받는다
+    * Map은 변하지 않기 때문에 하나의 노드로만 표현한다
+* 기본적으로는 State와 Observation으로 이루어진 구조에 일부 다른 변수가 추가된 구조이다
+
+
+### Speech Recognition
+
+* 음성 인식 분야에서는 HMM이 성공적으로 많이 활용되었다
+* 음성으로 된 문장이 주어졌을 때 노이즈를 제거하고 가장 가능성이 높은 형태의 문장으로 반환한다
+* 어떻게 동작할까?
+    * 주파수를 푸리에 변환하여 음절단위로 쪼갠다
+    * 쪼개진 단어들을 순서대로 모아서 어떤 단어에 해당하는지 추론한다
+    * 각각의 발음에 대응하는 알파벳 문자를 연결한다 ( Phonetic Alphabet )
+    * Word HMM
+        * 단어를 음소 단위로 쪼개는 HMM 모형
+        * self transition loop도 존재한다
+    * Phone HMM
+        * 음소에 대한 HMM 모델링
+        * 특정한 발음에 대해서 처음, 중간, 끝의 state가 존재한다
+    * Recognition HMM
+
+### Summary
+
+* HMM은 DBN의 일종으로 볼 수 있다
+* HMM은 확률 변수들만 보면 특정한 구조를 가지지 않는 것 처럼 보인다
+* HMM 구조는 transition 행렬에서 sparsity나 변수가 반복되는 등의 구조를 주로 보인다
+* sequence를 모델링하는데 HMM이 많이 사용된다
