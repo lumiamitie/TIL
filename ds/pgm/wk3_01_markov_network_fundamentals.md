@@ -53,3 +53,76 @@
 * Pairwise Markov Networks는 노드 X1, ... , Xn 으로 구성된 Undirected Graph이다
     * Xi - Xj 가 순서대로 연결되어 edge를 구성한다
     * 각각의 edge는 factor `phi_ij` 와 연결되어 있다
+
+
+## General Gibbs Distribution
+
+앞에서 살펴본 Pairwise Markov Networks 보다 조금 더 일반화된 모형인 Gibbs Distribution에 대해서 알아보자.
+4가지 변수 A,B,C,D 가 있을 때 2개씩 서로 연결하여 쌍을 구성할 수 있다. 
+이렇게 표현하면 모든 경우를 표현할 수 있을까? 다시 말하면, 4개의 확률 변수로 이루어진 모든 확률 분포를 나타낼 수 있을까? 
+
+X1, ... , Xn 까지의 n개의 노드가 있고 각각의 노드가 d가지 값을 가질 수 있는 Fully Connected Pairwise Markov Network를 가정해보자. 
+네트워크가 가질 수 있는 파라미터의 수는 `nC2 edges x d^2` 로 O(n^2 * d^2) 이다.
+일반적인 경우, 그러니까 d가지 값을 가지는 n개의 노드 전체를 가정하면 몇 가지 파라미터가 존재할 수 있을까? O(d^n)이다. 
+O(n^2 * d^2)에 비해 훨씬 큰 값이라는 것을 알 수 있다. ( `O(d^n) >> O(n^2 * d^2)` ) 
+따라서 Pairwise Markov Network는 모든 종류의 확률 분포를 충분히 설명할 수 있을 정도로 표현력이 좋은 모형이 아니라는 점을 알 수 있다.
+
+그렇다면 Undirected 그래프를 이용한 네트워크 모형의 커버리지를 높이기 위해서는 어떻게 해야 할까? 일단 Pairwise Edge 부터 포기해야 한다.
+
+### Gibbs Distribution
+
+* 2개 이상의 파라미터를 가지는 general factor를 이용해보자
+    * 지금까지는 2개의 쌍으로 이루어진 factor만 사용했다면 3개, 4개, 또는 그 이상으로 이루어진 general factor를 사용한다
+    * 이제는 모든 확률분포를 표현할 수 있을까? 할 수 있다.
+* **Gibb Distribution**은 factor들의 집합인 Phi로 나타낼 수 있다. 세 가지 단계를 통해 분포를 정의해보자
+    * 1) 모든 factor를 곱한다 (factor product)
+        * 아직은 확률 분포는 아니다 (Unnormalized Measure)
+    * 2) Partition Function을 정의한다
+        * 1번의 결과에서 모든 값을 더한다
+        * Normalizing constant의 역할을 수행한다
+    * 3) 모든 값을 Partition Function의 결과값으로 나눈다
+        * 이제 Normalize 된 결과를 얻을 수 있다
+
+### Induced Markov Network
+
+* 두 개의 factor phi1(A,B,C) 와 phi2(B, C, D) 로 구성된 네트워크가 있다
+    * phi1 : scope가 {A, B, C}
+    * phi2 : scope가 {B, C, D}
+* 두 factor를 네트워크 상에 표현할 경우 phi1은 A, B, C를 edge로, ph2는 B, C, D를 edge로 연결한 형태가 된다
+    * 강의자료에서 phi1은 파란색 선, phi2는 빨간색 선으로 표시되어 있다
+* 이것을 **Induced Markov Network**라고 한다
+    * factor로 구성된 집합 Phi가 있다고 해보자. 각각의 factor `phi_i`의 scope는 `D_i` 이다
+    * `Phi = { phi_1(D1), ... , phi_k(Dk) }`
+* Induced Markov network `H_phi` 는 변수 Xi, Xj가 factor `phi_m`의 scope `Dm`에 포함될 경우, 항상 Xi - Xj 로 이어지는 edge를 갖는다
+    * 다시 말하자면, 두 변수가 동일한 scope에 존재할 경우 두 변수는 서로 연결되어 있다
+
+### Factorization
+
+* factor들의 집합인 Phi가 존재한다면, P는 H에 대해 factorize 할 수 있다
+    * 단 `P = P_phi` (normalize된 factor product)
+    * H는 phi에 대한 induced Markov Network 일 경우
+* 그래프로부터는 factorization 을 파악할 수 없다
+
+### Flow of Influence
+
+* 그런데 그래프가 왜 동일한 것일까?
+    * 그래프가 factorization이나 구조를 표현하지 못한다면, 그래프는 무엇을 나타내고 있는 것일까?
+* 그래프 내부에 있는 factor 들의 influence 흐름을 살펴보자
+    * 하나의 변수가 다른 변수에 영향력을 행사할 수 있는 때는 언제일까?
+        * 두 변수가 trail로 연결되어 있을 때 (다른 factor에 속해 있더라도 상관없다)
+    * factor 구성에 따라 각 분포의 파라미터는 달라지지만, 그래프 내부에서 영향력의 흐름을 나타내는 trail (path) 은 동일하다
+
+### Active Trails
+
+Markov Network에서 active trail을 정의해보자. 베이지안 네트워크에서의 정의보다 훨씬 간단한다.
+
+* Trail X1 - ... - Xn 의 노드 중 관측된 것이 없다면 (no Xi in Z) active trail 이다
+* 관측된 변수가 있다면 영향력의 흐름이 끊긴다
+    * D - A - B 의 path가 있다고 하면, A가 관측되지 않았을 경우 active trail에 해당된다
+
+### Summary
+
+* Gibbs distribution은 확률분포를 factor product 형태로 표현한다
+* Induced Markov Network에서는 동일한 factor에 속한 노드를 서로 연결한다
+* Markov Network 구조는 특정한 형태로 factorize 되지 않는다
+* 하지만 active trail은 그래프 구조에만 의존한다
