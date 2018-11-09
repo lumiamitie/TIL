@@ -5,6 +5,7 @@
 1. Hive에서 쿼리를 통해 가져온 데이터를 wide 포맷으로 피벗한다
 2. `VectorAssembler`를 사용하여 하나의 feature column으로 묶는다
 3. PCA를 적용한다
+4. 결과를 Hive Table로 export한다
 
 ```python
 import pyspark
@@ -33,8 +34,22 @@ score_features = vecAssembler.transform(score_wide)
 
 # pca를 학습한다
 pca = PCA(k=2, inputCol='features', outputCol='pca_features')
-model_pca = pca.fit(ufo_score_features)
+model_pca = pca.fit(score_features)
 
 # 결과를 추출한다
-pca_result = model.transform(score_features).select('pca_features')
+pca_result = (model_pca
+    .transform(score_features)
+    .select(['id', 'pca_features'])
+)
+
+# 결과값을 담기 위한 Hive 테이블을 생성한다
+sc.sql("""
+CREATE TABLE IF NOT EXISTS database.table (
+  id STRING,
+  pca_features struct<type:tinyint,size:int,indices:array<int>,values:array<double>>
+)
+""")
+
+# 결과 업로드
+pca_result.write.mode('overwrite').saveAsTable('database.table')
 ```
