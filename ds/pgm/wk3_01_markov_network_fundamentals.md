@@ -126,3 +126,103 @@ Markov Network에서 active trail을 정의해보자. 베이지안 네트워크�
 * Induced Markov Network에서는 동일한 factor에 속한 노드를 서로 연결한다
 * Markov Network 구조는 특정한 형태로 factorize 되지 않는다
 * 하지만 active trail은 그래프 구조에만 의존한다
+
+
+## Conditional Random Fields
+
+Markov Network를 활용한 기법 중에서 가장 중요한 것 중 하나는 바로 **Conditional Random Field** 이다. Markov Network와 비슷하게 생겼지만, 상당히 다른 목적으로 사용된다. 
+
+### Task-specific prediction
+
+이러한 종류의 모형은 task-specific prediction 이라고 불리는 문제를 다루기 위해 사용된다. 관측치를 나타내는 입력변수 X가 있고, 예측하고자 하는 목표 변수 Y가 있다. 입력변수의 타입은 항상 동일하고, 목표 변수의 타입 또한 항상 동일하다. 두 가지 예제를 통해 자세한 내용을 살펴보자.
+
+* Image Segmentation
+    * Input : 픽셀 (항상 픽셀값이다) 과 픽셀을 통해 가공한 값들 (히스토그램 등)
+    * Output : 각 픽셀에 대한 클래스 값 (들판, 하늘, 소 등등)
+    * X를 통해 Y를 예측하는 것이 우리가 하고자 하는 목표이다
+* Text Processing
+    * Input : 문장 내의 단어들
+    * Output : 단어에 대한 레이블 값 (인명, 장소, 단체 등등)
+* 각각의 예제에서 input과 output은 항상 동일한 형태의 타입을 갖는다
+
+### Correlated Features
+
+그렇다면 왜 기존의 방법을 쓰지 않겠다는 것일까? 무엇이 문제일까? 관련된 이슈를 함께 살펴보자.
+
+* Image Segmentation 문제에서 Superpixel Ci 의 클래스를 예측한다고 생각해보자.
+    * 색상과 질감 등 feature 들을 사용하여 모형을 구성한다
+    * Ci가 여기서는 Y (예측하려는 목표 변수) 에 해당된다
+* 문제는 예측을 위해 사용되는 feature 들이 서로 강한 상관관계로 얽혀 있다는 것이다
+    * 예를 들면, 텍스쳐의 경우 특정한 superpixel 내에서 선의 방향을 표현한다
+    * superpixel의 내부적인 구조나 텍스쳐의 종류에 따라 여러 feature에 중복된 정보들이 포함되어 있다
+    * 따라서 이러한 모형을 각각의 feature들이 독립적인 나이브 베이즈로 표현할 경우, 각 피쳐들의 상관관계 구조를 무시하는 것이 된다
+* feature 들의 관계를 (서로 중복된 정보가 많다는 점) 무시하는 것이 왜 나쁠까?
+    * 동일한 feature를 반복해서 사용하는 것과 비슷한 상태가 되기 때문에 나쁘다
+    * 따라서 잘못된 독립성 가정을 바탕으로 한 결과, 결과적으로 실제와는 다르게 굉장히 치우친 확률 분포를 얻게 된다
+* 그렇다면 이제 올바른 가정을 세워보자
+    * 각 변수들의 상관관계를 찾아내기 위한 edge 들을 모형에 추가한다
+    * 하지만 이러한 상관관계를 찾아낸다는 것은 굉장히 어려운 작업이다
+    * 또, edge 들을 추가하려다보니 모형이 더 복잡해진다
+* 그렇다면 아예 다른 해결방법을 찾아보자
+
+### CRF Representation
+
+* 일단 이미지의 feature 들에 대해서는 신경쓰지 말자
+    * 픽셀의 확률 분포를 예측하고자 하는 것이 아니다
+    * 녹색 픽셀 옆에 또 다른 녹색 픽셀이 있고, 그 옆에 갈색 픽셀이 있을 확률을 구하려는 것이 아니다
+    * feature X가 주어졌을 때, Y의 분포만을 고려하면 된다
+* 모형을 바꾸는 대신에 문제를 다시 정의해보자
+    * X와 Y의 Joint Distribution을 구하는 대신 X가 주어졌을 때 Y의 조건부 확률분포를 구한다
+        * model P(X, Y) => model P(X | Y)
+    * 이제 X의 분포에 대해서는 신경쓰지 않는다. 따라서 feature들 간의 관련성에 대해서도 신경 쓸 필요가 없다
+* 이제 CRF (Conditional Random Field) 의 수학적인 정의를 살펴보자
+    * 각각 scope를 가지고 있는 factor 들의 집합이 있다
+    * Gibbs Distribution을 구했던 것 처럼, factor 들을 모두 곱하면 unnormalized measure를 얻을 수 있다
+    * 위에서 구한 unnormalized measure 를 가지고 Y에 대한 합계를 구한다
+        * 이렇게 얻은 Partition Function은 X에 대한 함수가 된다
+        * 이 함수는 X가 주어졌을 때 Y의 합계를 반환한다
+    * Unnormalized measure를 Partition Function으로 나누면 normalize 된 확률 분포를 얻을 수 있다
+        * X에 따라 달라지는 Family of Conditional Distribution
+
+### CRFs and Logistic Model
+
+CRF는 다른 머신러닝 모형들과도 밀접한 관련이 있다. 또한 logisitc 함수를 사용하는 베이지안 네트워크 모형도 떠오른다. X와 Y 모두 바이너리 확률 변수인 경우에 대해 살펴보자
+
+* X, Y는 바이너리 변수이고, factor는 지수함수로 표현되는 모형이 존재한다
+* CASE1 : `phi_i(Xi, Y = 1)`
+    * Xi = 0 일 수도 있고,  Xi = 1일 수도 있다
+    * 따라서 모형은 다음과 같이 표현된다
+    * `phi_i(Xi, Y=1) = exp(Wi * Xi)`
+* CASE2 : `phi_i(Xi, Y = 0)`
+    * 우변이 무조건 exp(0)이 된다
+    * `phi_i(Xi, Y = 0) = 1`
+* 각 케이스에 따라 unnormalized density를 구할 수 있다
+* Unnormalized density를 Partition Function으로 나누어보면 익숙한 형태의 식을 얻게 된다
+    * 바로 Sigmoid 함수이다 ( e^z / (1 + e^z) )
+* 여기서 알 수 있는 것은 바로 로지스틱 모형이 아주 단순한 형태의 CRF라는 사실을 알 수 있다
+* 조건부 확률을 도입함으로써 X간의 상관관계를 고려하지 않고 모형을 구성할 수 있다
+    * X 변수들이 모여서 Y 변수의 확률에 어떤 영향을 미치는지에 대해서만 고려할 수 있게 된다
+    * feature의 개수가 늘어나더라도 각 입력변수들 사이에 어떤 상관이 있는지 고려할 필요가 없다
+
+### CRFs for Image Segmentation
+
+* Image Segmentation 문제에서는 보통 굉장히 다양한 feature를 사용한다
+    * 색상 히스토그램
+    * 질감
+    * Discriminative patches (소의 눈 부분 같은)
+* 위와 같은 feature 들은 서로 연관되어 있지만, CRF를 사용할 경우 그러한 연관성을 고려하지 않아도 된다
+* 또한 SVM이나 부스팅같은 discriminative classifier를 사용할 경우 성능을 높일 수 있다
+    * `P(Yi | X_bar)` : Y 변수에 대한 higher order features
+
+### CRFs for Language
+
+* 여기도 서로 관련성이 높은 다양한 feature 들이 존재한다
+* P(labels | words) 를 구한다
+
+### Summary
+
+* CRF는 Gibbs Distribution과 같은 방식으로 표현되지만, normalize 방식이 다르다
+    * 하나의 변수에 대해서만 Partition Function을 구하기 때문에 조건부 확률 형태로 표현된다
+    * Logistic Regression 모형을 일반화한 형태이다
+* 변수들 간의 분포에 대해서는 고려할 필요가 없다
+* 잘못된 독립성 가정을 세우는 것에 대한 걱정 없이 높은 표현력을 가진 모형을 구성할 수 있다
