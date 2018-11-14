@@ -112,3 +112,43 @@
     * 하지만 거리에 따라 페널티를 부여할 경우 실제로는 굉장히 불안정한 모형이 도출된다
     * 어느 정도 임계점을 넘어갈 경우 페널티를 일정하게 유지할 수 있다
         * 일정 거리 이상 떨어진 픽셀들과는 어차피 연관이 없을 것이다
+
+
+## Shared Features in Log-Linear Models
+
+모형의 구조나 파라미터를 공유하는 것은 Directed 모형에서 많이 발견할 수 있었다. 하지만 Undirected 모형에서도 등장하며, 오히려 더 많이 등장하기도 한다. Undirected 모형은 조건부 확률을 통해 표현되지 않기 때문에 파라미터를 도출하는 것이 더 어렵다. 작은 단위의 템플릿 형태로 표현하기는 좋다. log-linear 모형에서 어떻게 파라미터를 공유할 수 있는지 알아보자. 
+
+### Ising Models
+
+* 앞에서도 잠시 살펴보았지만, Binary 형태의 확률 변수로 구성되어 있다
+    * 그리드 형태로 원자들이 배열되어 있고, 각각의 원자는 특정한 방향의 스핀을 갖는다
+    * 인접한 원자들끼리는 스핀의 방향에 영향을 미친다
+* Ising Model의 에너지 모형은 모든 edge들에 대해서 weight * feature의 합을 구한 것이다
+* 지금은 파라미터를 공유하고 있지 않다
+    * 모든 pair i와 j에 대해서 각기 다른 weight 값을 가지고 있다 : Wij
+* 하지만 세상에 존재하는 모든 원자들 각각에 대한 모형을 만드는 것이 아니기 때문에, 실제로는 고정된 파라미터 W가 원자들에 미치는 영향을 모델링하게 된다
+    * 이 경우 동일한 feature, 동일한 weight를 사용한다
+
+### Natural Language Processing
+
+* X는 실제 단어, Y는 각 단어에 대한 레이블에 해당된다
+* MRF에서는 동일한 feature와 weight가 다양한 scope에서 사용되는 경우가 많다
+
+### Repeated Features
+
+* 그렇다면 어떻게 feature를 공유할 수 있을까?
+* 반복하고자하는 feature가 주어져 있다면, 그에 해당하는 scope를 명시해야 한다
+    * feature `f_k`
+    * a set of scopes `Scopes[f_k]`
+* `Scopes[f_k]` 에 속하는 `D_k` 가 있다면, 그에 해당하는 `WkFk(D_k)` 를 energy function의 형태로 정의할 수 있다
+    * `Wk * SUM( f_k(D_k) )`
+
+### Summary
+
+* Log-Linear 모형에서 feature와 weight을 공유하는 일은 자주 발생한다
+    * 인접한 픽셀, 원자, 단어 등으로 구성된 pair
+    * 문서에서 동일한 단어가 등장하는 빈도
+* 여러 개의 MN을 동일한 template 형태로 표현할 수 있다
+    * 다양한 이미지, 다양한 문장
+* 파라미터나 구조가 MN 내부나 서로 다른 MN 사이에서 공유될 수 있다
+* 각각의 feature에 대해서 scope의 집합을 명시할 필요가 있다
