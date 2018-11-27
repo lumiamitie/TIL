@@ -56,7 +56,7 @@ mutatingRemove.shift(); // ['b', 'c', 'd']
 
 `array.pop()` 과 `array.shift()` 는 제거하는 항목을 반환한다. 따라서 제거되는 항목을 변수로 잡아낼 수 있다.
 
-```javascriptlet
+```javascript
 let mutatingRemove = ['a', 'b', 'c', 'd', 'e'];
 
 const returnedValue1 = mutatingRemove.pop();  
