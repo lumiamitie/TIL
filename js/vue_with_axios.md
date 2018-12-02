@@ -52,7 +52,7 @@
   - Firebase에 데이터를 저장하기 위해 PUT 또는 POST 요청을 보낼 수 있다
   - 여기서는 `axios.post()` 를 통해 POST 요청을 보내보자
 - `axios.post()` 는 최소한 두 개의 인자를 필요로 한다
-  - 1) **URL** (string) : `https://<project-name>/firebaseio.com/users.json`
+  - 1) **URL** (string) : `https://<project>/firebaseio.com/users.json`
   - 2) **Data** (js object) : axios에서 자동으로 stringify 하여 전송한다
   - 3) **Additional Configuration for the Request** (js object, *optional*)
 - 요청을 보내면 해당 post 메서드에 대한 프로미스를 반환한다
@@ -96,7 +96,7 @@
         }
         console.log(formData)
           
-        axios.post('https://<proj>.firebaseio.com/users.json', formData)
+        axios.post('https://<project>.firebaseio.com/users.json', formData)
             .then(res => console.log(res))
             .catch(error => console.log(error))
       }
@@ -129,7 +129,7 @@
     
     export default {
         created() {
-            axios.get('https://vue-test-sc22.firebaseio.com/users.json')
+            axios.get('https://<project>.firebaseio.com/users.json')
                 .then(res => console.log(res))
                 .catch(error => console.log(error))
         }
@@ -166,7 +166,7 @@
             }
         },
         created() {
-            axios.get('https://vue-test-sc22.firebaseio.com/users.json')
+            axios.get('https://<project>.firebaseio.com/users.json')
                 .then(res => {
                     console.log(res)
                     const data = res.data
