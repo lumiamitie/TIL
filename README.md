@@ -34,3 +34,23 @@
 - 그외 잡다한 정보들
 
 ## 시즌2 (2018-10-15 ~ 2019-01-22)
+
+12/2 현재 49일차 진행중
+
+- [Coursera : Probabilistic Graphical Models 강의 정리](https://github.com/lumiamitie/TIL/tree/master/ds/pgm)
+- [Introduction to Empirical Bayes 책 내용 정리](https://github.com/lumiamitie/TIL/tree/master/bayesian/empirical_bayes)
+- [Ebay Tech Blog: A Case Study in Empirical Bayes](https://github.com/lumiamitie/TIL/blob/master/bayesian/ebay_empirical_bayes_case_study.md)
+- [Lambda Calculus](https://github.com/lumiamitie/TIL/blob/master/dev/lambda_calculus.md)
+- [AnoGAN](https://github.com/lumiamitie/TIL/blob/master/ds/anogan.md)
+- [TF-IDF](https://github.com/lumiamitie/TIL/blob/master/ds/tf_idf.md)
+- [JavaScript Array Methods: Mutating vs. Non-Mutating](https://github.com/lumiamitie/TIL/blob/master/js/js_array_methods.md)
+- [Vue.js: vue-router 에서 페이지 이동할 때 스크롤 초기화하기](https://github.com/lumiamitie/TIL/blob/master/js/vue_router_scrollreset.md)
+- [Vue.js: Vue에서 axios 사용하기](https://github.com/lumiamitie/TIL/blob/master/js/vue_with_axios.md)
+- [Python: Sanic을 이용한 CSV Download API 만들기](https://github.com/lumiamitie/TIL/blob/master/python/csv_download_api_using_sanic.md)
+- [R: 특정 코드의 실행시간을 계산하는 래퍼함수 만들기](https://github.com/lumiamitie/TIL/blob/master/rstudy/calculate_running_time.md)
+- [R: 라이브러리를 특정한 이름으로 import하기](https://github.com/lumiamitie/TIL/blob/master/rstudy/import_namespace_as_other_name.md)
+- [R: 색상 팔레트 생성하기](https://github.com/lumiamitie/TIL/blob/master/rstudy/palette_generator.md)
+- [R: Personality big5 검사결과에 PCA 적용하기](https://github.com/lumiamitie/TIL/blob/master/rstudy/pca_personality_big5.md)
+- [R: Poisson Regression을 이용한 출석수 예측](https://github.com/lumiamitie/TIL/blob/master/rstudy/til_season2_attendance_prediction.md)
+- [R: data.frame으로부터 transaction 구성하기](https://github.com/lumiamitie/TIL/blob/master/rstudy/transaction_from_df.md)
+- [Pyspark: PCA in spark](https://github.com/lumiamitie/TIL/blob/master/spark/pca_in_spark.md)
