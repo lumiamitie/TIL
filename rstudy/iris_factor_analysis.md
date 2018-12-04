@@ -23,10 +23,13 @@ pca_iris = prcomp(mat_iris)
 
 pca_iris$x %>%
   as.data.frame() %>% tbl_df() %>%
-  mutate(species = iris$Species) %>%
+  mutate(species = datasets::iris$Species) %>%
   ggplot(aes(x = PC1, y = PC2, color = species)) +
-  geom_point()
+  geom_point() +
+  ggtitle('PCA')
 ```
+
+![png](fig/iris_factor_analysis/fig01.png)
 
 PCA를 통해 얻을 수 있는 rotation matrix는 pca 결과 객체에 `rotation` 프로퍼티로 접근하면 얻을 수 있다.
 직접 계산하려면 공분산 행렬에서 고유벡터를 추출하면 된다.
@@ -55,8 +58,13 @@ eigen(cov(mat_iris))$vectors
 
 ```r
 # Factor를 몇 개 사용해야 할지 모르겠다면 스크리 도표를 먼저 확인해본다
-# scree(mat_iris)
+# 두 번째 컴포넌트에서 크게 꺾이는 것을 볼 수 있다. 일단 2개의 factor로 시작해보자.
+scree(mat_iris)
+```
 
+![png](fig/iris_factor_analysis/scree.png)
+
+```r
 # Factor Analysis 적용
 fa_iris = psych::fa(mat_iris, nfactors = 2, fm = 'minres', rotate = 'oblimin')
 
@@ -65,8 +73,11 @@ predict(fa_iris, mat_iris) %>%
   as.data.frame() %>%
   mutate(species = iris$Species) %>%
   ggplot(aes(x = MR1, y = MR2, color = species)) +
-  geom_point()
+  geom_point() +
+  ggtitle('Factor Analysis with 2 factors', subtitle = 'minres + oblimin')
 ```
+
+![png](fig/iris_factor_analysis/fig02.png)
 
 
 # FA 에서 weight, score 직접 구하기
