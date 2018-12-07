@@ -28,6 +28,16 @@ iris_mat_centered = apply(iris_mat, 2, function(x) x - mean(x))
 # Random Matrix를 구성한다
 C = t(iris_mat[sample(N_ROW)[1:N_PC], , drop = FALSE])
 C = matrix(rnorm(C), nrow(C), ncol(C), dimnames = labels(C))
+
+# "inv(C'C) C' X is the solution to the EM problem"
+# 라고 하는데 아직 이해가 안됨!!!
+X = iris_mat %*% C %*% solve(t(C) %*% C)
+reconstruction = X %*% t(C)
+
+# ss를 최소화하는 C를 찾는건가?
+ss = sum((reconstruction - iris_mat)^2) / (N_COL * N_ROW)
+
+# E-Step과 M-Step을 정의해보자
 ```
 
 To Be Continued
