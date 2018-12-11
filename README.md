@@ -35,7 +35,7 @@
 
 ## 시즌2 (2018-10-15 ~ 2019-01-22)
 
-12/2 현재 49일차 진행중
+12/11 현재 58일차 진행중
 
 - [Coursera : Probabilistic Graphical Models 강의 정리](https://github.com/lumiamitie/TIL/tree/master/ds/pgm)
 - [Introduction to Empirical Bayes 책 내용 정리](https://github.com/lumiamitie/TIL/tree/master/bayesian/empirical_bayes)
@@ -54,3 +54,8 @@
 - [R: Poisson Regression을 이용한 출석수 예측](https://github.com/lumiamitie/TIL/blob/master/rstudy/til_season2_attendance_prediction.md)
 - [R: data.frame으로부터 transaction 구성하기](https://github.com/lumiamitie/TIL/blob/master/rstudy/transaction_from_df.md)
 - [Pyspark: PCA in spark](https://github.com/lumiamitie/TIL/blob/master/spark/pca_in_spark.md)
+- [Vue.js: Vue 앱에서 인증 구현하기](https://github.com/lumiamitie/TIL/blob/master/js/vue_auth.md)
+- [R: Iris 데이터에 Factor Analysis 적용하기](https://github.com/lumiamitie/TIL/blob/master/rstudy/iris_factor_analysis.md)
+- [Python: Python Jupyter에서 R 사용하는 팁 정리](https://github.com/lumiamitie/TIL/blob/master/rstudy/r_in_python.md)
+- [R: Probabilistic PCA 구현](https://github.com/lumiamitie/TIL/blob/master/rstudy/ppca_in_r.md)
+- [R: PCA vs FA](https://github.com/lumiamitie/TIL/blob/master/rstudy/pca_vs_fa.md)
