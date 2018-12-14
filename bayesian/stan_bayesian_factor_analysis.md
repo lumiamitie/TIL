@@ -4,14 +4,7 @@ Stan을 이용해 Bayesian 스타일로 Factor Analysis를 적용해보자!
 
 다음 [포스팅](https://rfarouni.github.io/assets/projects/BayesianFactorAnalysis/BayesianFactorAnalysis.html) 의 Stan 코드를 참고하여 rstan을 통해 작업했다.
 
-다음과 같이 두 가지 방식으로 학습하는 코드를 각각 작성하는 것이 목표!
-
-- (1) 원본 데이터로부터 학습하기
-- (2) 상관관계 행렬로부터 학습하기
-
-## (1) 원본 데이터로부터 학습하기
-
-### Stan Code
+## Stan Code
 
 ```r
 model_str = "
@@ -77,7 +70,7 @@ model_str = "
   }"
 ```
 
-### Stan 컴파일 + 샘플링
+## Stan 컴파일 + 샘플링
 
 ```r
 
@@ -101,7 +94,7 @@ model_result = rstan::stan(
 )
 ```
 
-### 샘플링 결과 확인
+## 샘플링 결과 확인
 
 ```r
 # Sampling 결과 추출
@@ -127,7 +120,7 @@ model_loadings
 # [4,]  0.9202184 -0.2844980
 ```
 
-### psych 결과와 비교해보자
+## psych 결과와 비교해보자
 
 ```r
 # resmin + varimax 로 FA 학습
