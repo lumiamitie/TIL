@@ -37,7 +37,9 @@
 
 12/11 현재 58일차 진행중
 
-- [Coursera : Probabilistic Graphical Models 강의 정리](https://github.com/lumiamitie/TIL/tree/master/ds/pgm)
+- **Coursera : Probabilistic Graphical Models 강의 정리**
+    - [Course1: Representation](https://github.com/lumiamitie/TIL/tree/master/ds/pgm/course1_representation)
+    - [Course2: Inference](https://github.com/lumiamitie/TIL/tree/master/ds/pgm/course2_inference)
 - [Introduction to Empirical Bayes 책 내용 정리](https://github.com/lumiamitie/TIL/tree/master/bayesian/empirical_bayes)
 - [Ebay Tech Blog: A Case Study in Empirical Bayes](https://github.com/lumiamitie/TIL/blob/master/bayesian/ebay_empirical_bayes_case_study.md)
 - [Lambda Calculus](https://github.com/lumiamitie/TIL/blob/master/dev/lambda_calculus.md)
