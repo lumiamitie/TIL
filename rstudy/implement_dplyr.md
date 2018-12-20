@@ -96,3 +96,55 @@ iris %>%
 # 132          7.9         3.8          6.4         2.0 virginica
 # 136          7.7         3.0          6.1         2.3 virginica
 ```
+
+## (작성중) select
+
+select 함수의 주요 기능
+
+- 원하는 컬럼만 추출하거나 컬럼의 순서를 변경, 또는 컬럼 이름을 변경할 수 있다
+- 특정 열을 쉽게 선택할 수 있는 helper function을 사용할 수 있다
+
+```r
+custom_select = function(.data, ...) {
+  # dplyr:::select.data.frame 참고하여 작성
+  quos_ = rlang::quos(...)
+  qquos_ = rlang::quos( !(!(!quos_)) )
+
+  # variable context ???
+  variable_context = new.env()
+
+  set_current_variable_context = function(x) {
+    stopifnot(is.character(x) || is.null(x))
+    old = variable_context$selected
+    variable_context$selected = x
+    invisible(old)
+  }
+
+  ## (1) tidyselect::vars_select 구현 ##
+  var_names = names(.data)
+  if(!length(qquos_)) {
+    # 인자가 없을 경우 반환할 내용?!
+    vars_selected = tidyselect:::empty_sel(var_names, character(), character())
+  }
+
+  names_list = purrr::set_names( as.list(seq_along(var_names)), var_names )
+  first = rlang::f_rhs(quos_[[1]])
+
+  ind_list = tidyselect:::vars_select_eval(var_names, qquos_)
+
+  # 첫 번째 구문에 "-" 표기가 되어있는지 확인한다
+  initial_case = if (rlang::is_call(first, '-', n = 1)) {
+    list(seq_along(var_names))
+  } else {
+    integer(0)
+  }
+
+  ind_list = c(initial_case, ind_list)
+  names(ind_list) = c(rlang::names2(initial_case), rlang::names2(qquos_))
+  ind_list = purrr::map_if(ind_list, purrr::is_character, tidyselect:::match_var, table = var_names)
+
+  ####  TODO ####
+
+  ## (2) dplyr::select_impl 구현 ##
+}
+```
