@@ -110,41 +110,55 @@ custom_select = function(.data, ...) {
   quos_ = rlang::quos(...)
   qquos_ = rlang::quos( !(!(!quos_)) )
 
-  # variable context ???
-  variable_context = new.env()
-
-  set_current_variable_context = function(x) {
-    stopifnot(is.character(x) || is.null(x))
-    old = variable_context$selected
-    variable_context$selected = x
-    invisible(old)
-  }
-
   ## (1) tidyselect::vars_select 구현 ##
   var_names = names(.data)
+
   if(!length(qquos_)) {
+
     # 인자가 없을 경우 반환할 내용?!
     vars_selected = tidyselect:::empty_sel(var_names, character(), character())
-  }
 
-  names_list = purrr::set_names( as.list(seq_along(var_names)), var_names )
-  first = rlang::f_rhs(quos_[[1]])
-
-  ind_list = tidyselect:::vars_select_eval(var_names, qquos_)
-
-  # 첫 번째 구문에 "-" 표기가 되어있는지 확인한다
-  initial_case = if (rlang::is_call(first, '-', n = 1)) {
-    list(seq_along(var_names))
   } else {
-    integer(0)
+    names_list = purrr::set_names( as.list(seq_along(var_names)), var_names )
+    first = rlang::f_rhs(quos_[[1]])
+
+    ind_list = tidyselect:::vars_select_eval(var_names, quos_)
+    ## (1.1) tidyselect:::vars_select_eval 구현 ##
+    ## I: Input names (Vector[Character])
+    ## O: Index of Input names (List[Integer])
+    # ind_list <- vars_select_eval(.vars, quos)
+
+    # 첫 번째 구문에 "-" 표기가 되어있는지 확인한다
+    initial_case = if (rlang::is_call(first, '-', n = 1)) {
+      list(seq_along(var_names))
+    } else {
+      integer(0)
+    }
+
+    ind_list = c(initial_case, ind_list)
+    names(ind_list) = c(rlang::names2(initial_case), rlang::names2(qquos_))
+    ind_list = purrr::map_if(ind_list, purrr::is_character, match, table = var_names)
+
+    is_integerish = purrr::map_lgl(ind_list, rlang:::is_integerish)
+    if (any(!is_integerish)) stop('Must evaluate to column positions or name')
+    
+    incl = tidyselect:::inds_combine(var_names, ind_list)
+    vars_selected = purrr::set_names(var_names[incl], names(incl))
+
+    if (purrr::is_empty(vars_selected)) {
+      rlang::signal('', 'tidyselect_empty')
+      names(vars_selected) = vars_selected
+    } else {
+      unnamed = rlang::names2(vars_selected) == ''
+      names(vars_selected)[unnamed] = vars_selected[unnamed]
+    }
+    # vars_selected에서 추출하고자 하는 컬럼명이 value, 변경하고자 하는 컬럼명이 name이 된다
   }
-
-  ind_list = c(initial_case, ind_list)
-  names(ind_list) = c(rlang::names2(initial_case), rlang::names2(qquos_))
-  ind_list = purrr::map_if(ind_list, purrr::is_character, tidyselect:::match_var, table = var_names)
-
-  ####  TODO ####
 
   ## (2) dplyr::select_impl 구현 ##
+  pos = purrr::map_int(vars_selected, ~ which(.x == var_names))
+  newdata = .data[, pos, drop=FALSE]
+  names(newdata) = names(vars_selected)
+  newdata
 }
 ```
