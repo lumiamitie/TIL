@@ -104,16 +104,17 @@ select 함수의 주요 기능
 - 원하는 컬럼만 추출하거나 컬럼의 순서를 변경, 또는 컬럼 이름을 변경할 수 있다
 - 특정 열을 쉽게 선택할 수 있는 helper function을 사용할 수 있다
 
+### 구현
+
 ```r
 custom_select = function(.data, ...) {
   # dplyr:::select.data.frame 참고하여 작성
   quos_ = rlang::quos(...)
-  qquos_ = rlang::quos( !(!(!quos_)) )
 
   ## (1) tidyselect::vars_select 구현 ##
   var_names = names(.data)
 
-  if(!length(qquos_)) {
+  if(!length(quos_)) {
 
     # 인자가 없을 경우 반환할 내용?!
     vars_selected = tidyselect:::empty_sel(var_names, character(), character())
@@ -123,10 +124,9 @@ custom_select = function(.data, ...) {
     first = rlang::f_rhs(quos_[[1]])
 
     ind_list = tidyselect:::vars_select_eval(var_names, quos_)
-    ## (1.1) tidyselect:::vars_select_eval 구현 ##
+    ## tidyselect:::vars_select_eval ##
     ## I: Input names (Vector[Character])
     ## O: Index of Input names (List[Integer])
-    # ind_list <- vars_select_eval(.vars, quos)
 
     # 첫 번째 구문에 "-" 표기가 되어있는지 확인한다
     initial_case = if (rlang::is_call(first, '-', n = 1)) {
@@ -136,12 +136,15 @@ custom_select = function(.data, ...) {
     }
 
     ind_list = c(initial_case, ind_list)
-    names(ind_list) = c(rlang::names2(initial_case), rlang::names2(qquos_))
+    names(ind_list) = c(rlang::names2(initial_case), rlang::names2(quos_))
+
+    # 실제 구현에서는 tidyselect:::match_var 를 사용하지만 여기서는 base::match 로 대신한다
     ind_list = purrr::map_if(ind_list, purrr::is_character, match, table = var_names)
 
     is_integerish = purrr::map_lgl(ind_list, rlang:::is_integerish)
     if (any(!is_integerish)) stop('Must evaluate to column positions or name')
-    
+
+    # tidyselect:::inds_combine 은 Cpp로 구현되어 있다
     incl = tidyselect:::inds_combine(var_names, ind_list)
     vars_selected = purrr::set_names(var_names[incl], names(incl))
 
@@ -161,4 +164,13 @@ custom_select = function(.data, ...) {
   names(newdata) = names(vars_selected)
   newdata
 }
+```
+
+### 확인
+
+```r
+custom_select(iris, Sepal.Length)
+custom_select(iris, Sepal.Length, Sepal.Width)
+custom_select(iris, -Sepal.Length)
+custom_select(iris, dplyr::starts_with('Petal'))
 ```
