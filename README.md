@@ -35,7 +35,7 @@
 
 ## 시즌2 (2018-10-15 ~ 2019-01-22)
 
-12/11 현재 58일차 진행중
+12/31 현재 78일차 진행중. HAPPY NEW YEAR!
 
 - **Coursera : Probabilistic Graphical Models 강의 정리**
     - [Course1: Representation](https://github.com/lumiamitie/TIL/tree/master/ds/pgm/course1_representation)
