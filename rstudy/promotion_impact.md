@@ -61,7 +61,22 @@ tbl_data_for_lm %>%
     scale_alpha_manual(values = c(1, 0.5))
 
 lm_model = lm(y ~ trend_period, data = tbl_data_for_lm)
-lm_model$residuals # 일별 잔차를 프로모션의 일별 효과로 간주한다
+
+# 일별 잔차를 프로모션의 일별 효과로 간주한다
+tbl_daily_residual = tbl_data %>%
+  select(dt = ds) %>%
+  mutate(residuals = lm_model$residuals)
+
+# residual 값을 기존 promotion에 조인한다
+tbl_promotion_add_resid = tbl_promotion %>%
+  left_join(tbl_daily_residual, by = 'dt') %>%
+  filter(start_dt >= min(tbl_data$ds), end_dt <= max(tbl_data$ds)) %>%
+  # promotion의 잔차를 min-max scaling한다
+  mutate(residuals = scales::rescale(residuals)) %>%
+  # 겹치는 날짜의 잔차를 균등 배분한다
+  add_count(dt) %>%
+  mutate(residuals = residuals / n) %>%
+  select(-n)
 
 #### _ 1.2 var.type 'dummy' preprocessing ####
 ```
