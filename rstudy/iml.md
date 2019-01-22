@@ -67,3 +67,81 @@ imp$results
 # Error in as.data.frame.default(x[[i]], optional = TRUE, stringsAsFactors = stringsAsFactors) :
 #   cannot coerce class ‘"ranger.prediction"’ to a data.frame
 ```
+
+### (3.3) Measure Interactions
+
+피쳐들이 서로 얼마나 상호관계를 가지는지 측정할 수 있다.
+전체 분산 중에서 상호관계를 통해 설명되는 부분이 얼마나 되는지에 따라 0(상호작용 없음) 부터 1(상호작용으로 모든 분산 설명 가능) 사이의 값으로 나타낸다.
+
+```r
+interact = Interaction$new(predictor)
+plot(interact)
+```
+
+특정한 피쳐를 선택해서 다른 피쳐들과의 상호관계를 살펴볼 수 있다.
+
+```r
+interact_crim = Interaction$new(predictor, feature = 'crim')
+plot(interact_crim)
+```
+
+## (4) Surrogate Model
+
+모형을 해석하기 쉽게 만드는 또 한 가지 방법은 블랙박스 모형을 Decision Tree 같은 더 간단한 모형으로 대신하는 것이다.
+원본 feature를 가지고 Decision Tree를 통해 블랙박스 모형의 예측을 학습시킨다.
+
+```r
+tree = TreeSurrogate$new(predictor, maxdepth = 2)
+plot(tree)
+
+# 학습한 트리를 통해 예측해 볼 수 있다
+head(tree$predict(Boston))
+#     .y.hat
+# 1 25.30993
+# 2 25.30993
+# 3 38.01278
+# 4 38.01278
+# 5 38.01278
+# 6 25.30993
+#
+# Warning message:
+#   In self$predictor$data$match_cols(data.frame(newdata)) :
+#   Dropping additional columns: medv
+```
+
+## (5) Explain single predictions
+
+### (5.1) Local Model
+
+Global surrogate model을 통해 전체 모형이 어떤 방식으로 동작하는지 확인할 수 있었다.
+각각의 예측값을 이해하기 위해 모형을 국지적으로(locally) 학습할 수 있다.
+`LocalModel` 클래스는 선형 회귀 모형을 통해 학습하며, 예측하려는 데이터와 가까이 존재할 수록 높은 가중치를 부여한다.
+
+```r
+# install.packages('gower')
+lime_explain = LocalModel$new(predictor, x.interest = X[1,])
+plot(lime_explain)
+lime_explain$results
+#               beta x.recoded    effect x.original feature feature.value
+# rm       4.3866273     6.575 28.842074      6.575      rm      rm=6.575
+# ptratio -0.5497762    15.300 -8.411576       15.3 ptratio  ptratio=15.3
+# lstat   -0.4385939     4.980 -2.184197       4.98   lstat    lstat=4.98
+
+# 다른 값을 예측해보자
+lime_explain$explain(X[2,])
+plot(lime_explain)
+```
+
+### (5.2) Game theory : Shapley Value
+
+개별 예측값을 설명하는 또 다른 방법은 게임 이론에서 가져온 Shapley value 이다.
+하나의 데이터 포인트에 대해 각각의 피쳐들이 게임을 해서 예측에 기여한 값을 구한다.
+
+```r
+shapley = Shapley$new(predictor, x.interest = X[1,])
+shapley$plot()
+
+# 인스턴스를 재활용해서 다른 데이터 포인트를 설명할 수 있다
+shapley$explain(x.interest = X[2,])
+shapley$plot()
+```
