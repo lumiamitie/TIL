@@ -68,6 +68,13 @@ imp$results
 #   cannot coerce class ‘"ranger.prediction"’ to a data.frame
 ```
 
+### (3.2) Feature Effects
+
+```r
+ale = FeatureEffect$new(predictor, feature = 'lstat')
+ale$plot()
+```
+
 ### (3.3) Measure Interactions
 
 피쳐들이 서로 얼마나 상호관계를 가지는지 측정할 수 있다.
