@@ -129,3 +129,134 @@
 > If there isn't any correlation anywhere in the data after applying an appropriate causal inference technique, then there indeed is no causal effect of the policy variable on the outcome.
 
 정리해보면, 상관관계는 인과관계를 의미할 수도 있다. 다만 몇 가지 테크닉을 적용한 이후에 판단해야 한다.
+
+
+# Introduction to Treatment Effects
+
+## The Average Treatment Effect
+
+Causal effect는 사람마다 다른 정도로 발생할 수 있다.
+
+- 즉, population에서 causal effect의 정도에 대한 분포가 존재한다
+- 어떤 사람들에게는 긍정적인 효과가 발생할 수 있고, 누군가에게는 부정적인 효과가 발생할 수 있다
+
+모든 사람들 각각에 대한 효과를 아는 것이 가장 이상적이다
+
+- 이 경우에는 모든 treatmetn 각각에 대해서 가장 이상적인 결정을 내릴 수 있다
+- 의사들이 개별 환자들에 대한 효과를 모두 알고 있다면, 가장 적합한 약을 처방할 수 있을 것이다
+
+만약 Causal effect의 분포를 알고 있다면 (모든 사람의 효과를 안다면) 다양한 값을 구할 수 있다. 예를 들면,
+
+- 긍정적인 효과가 발생하는 사람들의 비율
+- Medicaid 의 수혜를 받는 사람이 얼마나 되는가
+- 특정 약이 효과가 있는 사람이 얼마나 되는가?
+
+문제는 우리가 unit level의 causal effect를 알 수 없다는 것이다.
+동일한 사람이 treatment 그룹과 not treatment 그룹에 동시에 속할 수는 없다.
+
+만약 개개인의 효과는 모르더라도 Causal effect의 분포를 알고 있다면 전반적인 수치들은 얻어낼 수 있을 것이다.
+이러한 내용들은 종종 필요하지만, 알아내기 어려운 것들이다.
+할 수는 있지만 일반적으로 많은 가정들이 필요하고, 어렵다.
+
+이러한 문제들로 인해 흔히 사용하게 되는 방식이 바로 **Average Treatment Effect** 라는 것이다.
+모든 사람들에 대한 unit level causal effects를 평균하여 구한다.
+
+Average Treatment Effect는 전반적인 효과를 잘 대표하기도 하지만, 평균만으로는 부족할 때도 있다.
+따라서 최대/최소 효과같이 causal effect의 전반적인 분포에 대해서도 확인해야 한다.
+하지만 이러한 값들은 평균보다 구하기 어렵다.
+
+**Average Treatment Effect**
+
+- (1) 모든 사람들이 Medicaid의 혜택을 받고 있다고 생각해보자
+    - 그리고 사람들의 수치를 관찰한다
+    - 이 경우의 사람들의 평균 결과값은 Medicaid 혜택에 대한 평균이라고 볼 수 있다
+    - Average Outcome under Policy
+- (2) 아무도 Medicaid 혜택을 받지 않을 때 사람들의 결과값을 관찰해보자
+    - 이 경우 사람들의 평균 결과값은 Medicaid 혜택이 없을 때의 평균이다
+    - Average Outcome without Policy
+- Average Treatment Effect는 이 두 가지를 뺀 값이다
+    - **ATE = Average Outcome under Policy - Average Outcome without Policy**
+- 이 값이 바로 평균적인 unit level causal effect를 나타낸다
+- 수치가 클수록 좋은 상황이라고 가정해보자 (GDP 같은 수치)
+    - 이 경우 일반적인 해석은 Average Treatment Effect 가 양수일 경우 좋은 정책이라는 것이다
+    - 평균적으로 해당 treatment가 GDP의 증가를 일으킨다는 것을 의미한다
+    - 음수일 경우은 반대의 효과, 0에 가까울 경우에는 큰 의미 없다고 해석할 수 있다
+
+## The Unit Level Effect
+
+Causal Effect를 정량적으로 측정하기 위해서는 우리가 어떤 것에 대한 평균을 구하고 있는 건지 알아야 한다.
+Medicaid 또는 콜레스테롤의 Causal Effect 라는 것은 구체적으로 무엇을 말하는 것일까?
+
+Unit 하나 (여기서는 사람 1명) 에 대해서만 생각해보자.
+
+- Medicaid 여부를 포함하여 콜레스테롤 수치에 영향을 줄 수 있는 요인들은 모두 적어본다
+- 특정 unit에 대한 콜레스테롤 수치에 대한 Medicaid의 causal effect는 다음과 같이 정의할 수 있다
+    - 다른 조건들이 모두 동일할 때,
+    - *해당 unit이 Medicaid에 들었을 때 콜레스테롤 수치 - Medicaid에 안들었을 때 콜레스테롤 수치*
+
+이러한 정의에는 몇 가지 중요한 포인트가 있다.
+
+- (1) 특정 unit에 대한 causal effect 라는 점이다
+- (2) causal effect는 다른 변수가 모두 동일할 때의 **차이값(difference between values)** 이다
+    - 이 때, 다른 변수의 값을 바꾸고 차이값을 구한다면 다른 causal effect 를 얻게 될 것이다
+    - 이것을 **Interaction Effect** 이라고 한다
+    - 좋은 식습관을 가지고 있을 때 Medicaid의 causal effect가 0이고 식습관이 나쁠 때는 양의 effect를 가질 수 있다
+
+위 두 가지 경우를 통틀어서 causal effect에 **heterogeneity** (이질성) 가 존재한다고 말한다.
+
+- 서로 다른 두 사람의 causal effect는 다를 수 있다
+- 동일한 사람에 대해서도 다른 변수의 개입에 따라 특정 변수의 causal effect가 달라질 수 있다
+
+두 가지 결론을 상상해 볼 수 있다.
+
+- Medicaid를 들었을 때의 결과, 들지 않았을 때의 결과
+
+하지만 현실에서는 두 가지 결과를 동시에 관찰할 수 없다. 이것을 **인과추론의 근본적인 문제**라고 한다.
+
+이러한 문제를 어떻게 해결할 수 있을지 알아보자.
+
+## The Conditional Average Treatment Effect
+
+단일 unit이 아니라 특정한 그룹의 unit 들에 대한 효과를 측정할 수는 없을까?
+
+- **Conditional Average Treatment Effect**
+    - 전체 population에서 일부에 대한 ATE를 말한다
+    - 예를 들면, 남성/여성에 대한 effect
+
+| Person | Sex  | Outcome(w. Treatment) | Outcome(wo. Treatment) | Unit Causal Effect |
+| ------ | ---- | --------------------- | ---------------------- | ------------------ |
+| 1      | M    | 40                    | 30                     | 10 (= 40 - 30)     |
+| 2      | M    | 20                    | 20                     | 0 (= 20 - 20)      |
+| 3      | F    | 10                    | 15                     | -5 (= 10 - 15)     |
+| 4      | F    | 30                    | 30                     | 0 (= 30 - 30)      |
+
+위 표에서 각각의 사람들에 대한 causal effect는 아래와 같이 구할 수 있다.
+
+- **causal effect** = outcome with treatment - outcome without treatment
+- 하지만 현실 문제에서 실제로는 두 값을 모두 구할 수 없다
+- 우리는 모든 사람들에 대해서 두 개의 그룹 중 하나의 값만 알 수 있다
+
+여기서 **ATE**는 다음과 같다.
+
+```
+ATE = (10 + 0 + (-5) + 0) / 4 = 5/4
+```
+
+**CATE(men)** 을 구해보자. 남성 그룹에 대해서만 Unit Causal Effect의 평균을 계산하면 된다
+
+```
+CATE(men) = (10 + 0) / 2 = 5
+```
+
+**CATE(females)** 는 다음과 같다.
+
+```
+CATE(females) = (-5 + 0) / 2 = -5/2
+```
+
+결과를 해석해보자.
+
+- 전체적으로는 5/4 로 positive 효과를 보인다
+- 남성에 대해서는 5 : positive 효과이면서 효과가 전체대비 훨씬 크다
+- 여성에 대해서는 -2.5 : negative 효과가 발생했다
+- 성별에 따라 다른 효과가 발생했다는 것을 확인할 수 있다
