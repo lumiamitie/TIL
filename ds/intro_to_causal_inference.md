@@ -260,3 +260,36 @@ CATE(females) = (-5 + 0) / 2 = -5/2
 - 남성에 대해서는 5 : positive 효과이면서 효과가 전체대비 훨씬 크다
 - 여성에 대해서는 -2.5 : negative 효과가 발생했다
 - 성별에 따라 다른 효과가 발생했다는 것을 확인할 수 있다
+
+
+# Confounders, Counterfactuals, and p-Hacking
+
+## Confounders
+
+- Causal effects는 다른 모든 변수들이 고정되어 있을 때, treatment의 변화에 따른 결과의 변화를 말한다
+- treat 여부에 따라 사람들을 비교할 때, 고정되지 않은 변수가 있다면 이것을 **Confounder** 라고 한다
+- treat 여부와 결과값의 상관관계를 비교할 때 confounder가 존재한다면 영향을 미칠 수 있다
+- 이러한 변수가 존재하더라도 결과에 영향을 미치지 않는다면 confounder라고 하지 않는다
+
+## Counterfactuals
+
+데이터를 관측하고 나면 각각의 unit은 treatment 그룹에 속해있거나 그렇지 않거나 둘 중 하나일 것이다.
+
+- 두 가지 결과 중 하나는 실제 데이터를 통해 확인할 수 있는 결과값이다
+- 만약 treatment가 달랐다면 다른 결과를 얻었을 것이다
+- 이것을 **Counterfactual outcome** (반증적 결과) 이라고 한다
+- 어떤 사람이 Medicaid를 받았다면, 받지 않았을 때의 결과를 counterfactual outcome 이라고 한다
+
+인과관계를 파악하는 것은 **실제 결과값 (actual outcome)과 반증적 결과값 (counterfactual outcome) 을 비교하는 작업** 으로 이해할 수 있다.
+만약 다른 일이 있어났다면 어땠을지 비교해보는 것이다.
+Counterfactuals 들은 실제로는 관찰할 수 없는 값이다.
+따라서 Causal Inference 기법들은 다양한 가정을 통해서 **관측할 수 없는 Counterfactual Outcome 을 관측하고자 한다.**
+
+여기서는 정량적인 분석을 중심으로 진행하겠지만, 동일한 아이디어를 정성적인 분석에도 적용할 수 있다.
+
+- 이 경우 역사적/문화적 맥락을 바탕으로 counterfactual outcome 을 정성적으로 표현해야 한다
+- 예를 들면, 남북전쟁에서 게티즈버그 전투는 중요한 전환점으로 평가받고 있다
+- 만약 남부의 로버트 리 장군이 승리했다면 어떻게 되었을까? (윈스턴 처칠은 이에 대한 에세이를 쓴 적이 있다)
+
+주어진 Counterfactual Outcome을 논리적으로 반박할 수는 없다. 실제로 관측할 수 없는 값이기 때문이다.
+로버트 리 장군이 전투에서 승리했다면 이후에 어떻게 되었을지 알 수 없다.
