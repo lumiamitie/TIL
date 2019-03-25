@@ -118,3 +118,52 @@ CLT (중심극한정리) 에 의해 해당 분포가 정규분포의 형태를 �
     - 신뢰구간이 0을 포함하지 않을 경우, 귀무가설을 기각할 수 있다
 
 세 가지 방식 모두 기본적인 컨셉은 비슷하다.
+
+# Practice with Published Experiments - The Oregon Health Insurance Experiment
+
+## The Design of the Oregon Health Experiment
+
+2008년에 오레곤주는 Medicaid 대상자를 저소득층 성인들까지 확대하기로 하였다.
+따라서 9만명 가량의 사람들이 Medicaid에 추가로 참여하게 되었다.
+하지만 주정부는 신청자 전원을 처리할 수 있을 정도의 예산을 보유하고 있지 않았다.
+결국 주에서는 추첨을 통해 Medicaid 참가 여부를 결정하게 되었다.
+
+- 실험 설계를 간단히 살펴보면 다음과 같다
+    - Submitted name for lottery (n=89824) : Medicaid 전체 신청자
+    - Excluded (n=14902) : 전체 신청자 중에서 제외되어야 하는 사람들
+        - Gave address outisde of Oregon (n=36)
+        - Not age 19-62 on Jan 1, 2008 (n=3258)
+        - Gave group or institutional address (n=5161)
+        - Signed up by unrelated third party (n=5708)
+        - Died prior to the notification date 9 (n=134)
+        - Multiple active observations (n=605)
+    - Included in Oregon Health Insurance Experiment (n=74922) : 추첨 대상자들
+    - Treatment (n=29834)
+        - In-Person Survey Sample (n=10405) : 1년 뒤에 질문지 발송
+        - Survey Responders (n=6387) : 응답한 사람들 (응답률은 73.4%)
+            - Enrolled in OHP (Oregon Health Program) (n=1903)
+            - Not enrolled in OHP (n=4484) : 이 사람들은 실제로는 treatment 대상자가 아니다
+    - Controls (n=45088)
+        - In-Person Survey Sample (n=10340)
+
+위 실험에서는 발생한 문제점이 발생했다.
+
+- 추첨을 통해 랜덤하게 그룹을 나누었지만, 설문에 대한 응답을 받는 과정에서 상당량의 정보가 누락되었다
+- 응답한 대상자 중에서 Oregon Health Program에 가입된 대상자의 비율이 너무 낮다 (약 30%)
+    - treatment 그룹에 속해있지만 실제로 treat 되지 않은 대상자가 너무 많다
+    - 이러한 unit을 Noncompliers 라고 한다
+- treatment 그룹에 속해있는데 treat 되지 않거나, control 그룹에 속해있는데 실제로는 treat 처리된 unit들을 **Noncompliers** 라고 한다
+
+## A Note on Heteroskedasticity
+
+두 집단의 평균을 비교하기 위해서는 t-test를 주로 사용한다.
+하지만 데이터의 특성에 따라서 t-test를 그냥 적용하는 것이 어려운 경우가 존재한다.
+
+- 만약 두 그룹의 분산이 비슷하다면 신뢰구간의 범위도 비슷할 것이다
+    - 따라서 이 경우에는 최종적으로 두 분포의 분산을 합쳐서 (pooling) 유의미한 차이가 존재하는지 확인한다
+- 두 그룹의 분산이 크게 다를 수도 있다
+    - 이러한 특성을 **Heteroskedasticity** (이분산성) 라고 한다
+    - 이러한 경우에는 두 분포의 분산이 다르다는 것을 반영해야 한다
+
+R에서는 그냥 옵션을 조절하는 방식으로 비슷하게 처리할 수 있다.
+하지만 동작하는 원리가 달라지기 때문에 이러한 점을 이해하고 넘어가자.
