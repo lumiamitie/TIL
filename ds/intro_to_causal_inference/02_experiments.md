@@ -154,6 +154,15 @@ CLT (중심극한정리) 에 의해 해당 분포가 정규분포의 형태를 �
     - 이러한 unit을 Noncompliers 라고 한다
 - treatment 그룹에 속해있는데 treat 되지 않거나, control 그룹에 속해있는데 실제로는 treat 처리된 unit들을 **Noncompliers** 라고 한다
 
+## Depression in the Oregon Health Experiment
+
+- 실험 설계가 다 되었다면, Medicaid가 실제로 효과가 있었는지 항목별로 비교해보자
+- 결과 표를 가지고 해석해보자
+    - Mean Value in Control Group : Control Group의 평균값
+    - Effect of Lottery Selection : ATE값을 나타낸다 (Treatment 그룹 평균 - Control 그룹 평균)
+        - 전체 모수의 모든 값을 관찰한 것이 아니기 때문에, 통계적 추론을 통해 95% 신뢰구간을 계산한다
+        - 신뢰구간이 0을 포함하지 않을 경우에는 통계적으로 유의한 차이가 있다고 말한다
+
 ## A Note on Heteroskedasticity
 
 두 집단의 평균을 비교하기 위해서는 t-test를 주로 사용한다.
