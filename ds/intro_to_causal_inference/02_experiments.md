@@ -214,7 +214,7 @@ Total cholesterol 부분을 살펴보자
 ## Important Issues in Experiment Design These Modules Ignore
 
 지금까지는 Randomized Experiment 를 통해 수집한 데이터를 어떻게 해석할지에 대해서 살펴보았다.
-그런데 데이터를 어떻게 수집해야할까? 실험을 설계하고, 실험을 진행해서 데이터를 모아야 한다.
+그런데 데이터를 어떻게 수집해야할까? 실험을 설계하고, 실험을 진행해서 데이터를 모아야 한다.
 이 과정에서 다양한 문제들이 발생한다.
 
 - 실험에는 몇 명의 참가자들이 필요할까?
@@ -251,7 +251,7 @@ Randomized Experiments 는 리서치 과정에서 표준처럼 사용된다.
 각각의 실험에서 개별 컴포넌트를 바꿔가면서 실험하면 컴포넌트 단위의 효과에 대해서도 파악할 수 있다.
 하지만 Medicaid 처럼 너무 복잡한 프로그램인 경우에는 이러한 방식을 적용하기 어려울 수 있다.
 위와 같은 방식을 적용하기 어려운 경우에는, 관찰한 데이터로 실험 결과를 보충하기도 한다.
-관찰한 결과를 통해 개별 컴포넌트의 효과를 추정한다.
+관찰한 결과를 통해 개별 컴포넌트의 효과를 추정한다.
 아니면 정성적인 자료를 활용하여 결과를 해석하기도 한다.
 
 Randomized Experiments 의 또다른 문제는, 현실에서 구현하기 어렵거나 불가능할 수 있다는 점이다.
@@ -261,3 +261,49 @@ Randomized Experiments 의 또다른 문제는, 현실에서 구현하기 어렵
 - 랜덤하게 treat 여부를 결정하는 것이 비윤리적일 수 있다
 
 이러한 경우에도 관찰한 데이터를 바탕으로 분석을 진행해야 한다.
+
+
+# Dealing with Noncompliance in Experiments
+
+## Noncompliance in Experiments
+
+임상실험에서 treat 대상자가 주어진 약을 복용하지 않을 수도 있다.
+이러한 경우를 **Noncompliance** 라고 한다.
+
+- treatment 그룹에 속했는데 실제로는 treat 을 행하지 않은경우
+- 또는 control 그룹에 속했는데 treat 된 경우
+
+**Noncompliance** 에 대처하는 방법은 크게 4가지가 있다.
+
+1. **Intention-to-treat Analysis**
+    - 실제로 treat 받은 대상자들로 Treatment 그룹을 다시 정의한다
+    - 이런식으로 다시 정의하면 Noncompliance라는 것이 존재할 수 없게된다
+2. **Instrumental Variables Analysis**
+    - treatment의 실제 효과를 알 수 있게 해주는 장점이 있다
+    - 하지만 Average Treatment Effect를 구할 수 없다
+    - 전체 집단으로부터 값을 구하지 않고, 모집단의 일부로부터 treatment effect를 계산한다
+3. **Assume Random Compliance**
+    - 대상자들이 약을 복용할지 말지 (treat 받을지 말지) 랜덤하게 선택했다고 가정한다
+    - 이렇게 가정할 경우 Noncompliance를 분석 대상에서 제외해버릴 수 있다
+    - Medicaid 대상자의 효과가 아니라, 대상자 중 Medicaid를 받은 사람의 효과로 해석하게 된다
+    - 전체 모집단에 대한 ATE를 구할 수 있다는 장점이 있다
+    - 단점은 Random Compliance라는 불확실한 가정에 너무 의존한다는 것이다
+4. **Bounds Analysis**
+    - 약한 가정을 바탕으로 한다는 장점이 있다
+    - 1~3번 방법들의 단점을 피해갈 수 있다
+    - 정확한 ATE 값이 아니라 그 구간(어떤 값보다 크다 등등) 만을 얻을 수 있다
+    - 따라서 만약 구간이 0을 포함한다면, 결론을 내릴 수 없는 상태가 된다
+
+## Survey Noncompliance
+
+실험 과정에서 발생하는 또다른 문제 중 하나는 바로 **Survey Noncompliance** 다.
+랜덤하게 사람을 뽑아서 설문을 요청해도 응답하지 않는 경우가 많다.
+
+- Oregon Health Experiment Data
+    - Treatments (n=29834)
+    - In-Person Survey Sample (n=10405)
+    - Survey Responders (n=6387) : 60% 정도의 사람만 설문에 응답했다
+- 사람들이 설문에 응답하지 않는 것이 왜 문제일까?
+    - **Selection Problem** 때문이다
+    - 어떠한 변수를 사람들이 선택할 수 있게 되면 선택으로 인한 편향이 생길 수 있다
+    - Medicaid가 마음에 드는 사람들은 굳이 응답을 하지 않은 반면, 불만족스러운 사람들은 설문에 적극적으로 응답하는 경우가 발생할 수 있다
