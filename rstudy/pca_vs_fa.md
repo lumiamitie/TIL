@@ -46,7 +46,7 @@ iris %>%
   geom_segment(aes(xend = PC1, yend = PC2), color = '#dddddd') +
   geom_point(color = 'steelblue', alpha = 0.5) +
   geom_point(aes(x = PC1, y = PC2), color = 'black') +
-  ggtitle('Factor Analysis Result')
+  ggtitle('PCA Result')
 ```
 
 ![png](fig/pca_vs_fa/iris_pca.png)
