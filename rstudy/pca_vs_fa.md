@@ -17,15 +17,15 @@ PCA와 Factor Analysis는 둘 다 널리 사용되고 있는 차원축소 기법
 library('tidyverse')
 library('psych')
 
-# Iris 데이터를 행렬로 변환한다
-mat_iris = as.matrix(iris[,1:4])
-mat_iris_centered = apply(mat_iris[, 1:2],2, function(x) x-mean(x))
-
 # PCA 적용
-pca_iris = prcomp(mat_iris[, 1:2])
+pca_iris = prcomp(iris[, 1:2])
 
-# Factor Analysis 적용 (Minimum Residuals + Oblimin Rotation)
-fa_iris = psych::fa(mat_iris[, 1:2], nfactors = 1, fm = 'minres', rotate = 'oblimin')
+# Factor Analysis 적용 (Minimum Residuals + Varimax Rotation)
+fa_iris = fa(
+  scale(iris[,1:2]), # Centered data
+  nfactors = 1,      # Factor 개수
+  rotate = 'varimax' # Rotation 방법은 varimax로 설정
+)
 ```
 
 ## PCA
@@ -37,16 +37,16 @@ PCA는 분산이 가장 큰 방향을 축으로 잡는다. 따라서 FA에 비�
 ```r
 iris %>%
   select(Sepal.Length, Sepal.Width) %>%
-  # Scale 조정 (평균이 0이 되도록)
-  mutate_all(~ .x - mean(.x)) %>%
   # projection 결과를 바탕으로 원래의 2차원공간에 원복시킨다 (reconstruction)
-  bind_cols(data.frame(pca_iris$x[,1] %*% t(pca_iris$rotation[,1])) %>%
-              select(PC1 = Sepal.Length, PC2 = Sepal.Width)) %>%
+  bind_cols(as_tibble(pca_iris$x[,1] %*% t(pca_iris$rotation[,1])) %>%
+              select(PC1 = Sepal.Length, PC2 = Sepal.Width) %>%
+              mutate(PC1 = PC1 + pca_iris$center[1],
+                     PC2 = PC2 + pca_iris$center[2])) %>%
   ggplot(aes(x = Sepal.Length, y = Sepal.Width)) +
-    geom_segment(aes(xend = PC1, yend = PC2), color = '#cccccc') +
-    geom_point(color = 'steelblue') +
-    geom_point(aes(x = PC1, y = PC2), color = 'black') +
-    ggtitle('PCA result')
+  geom_segment(aes(xend = PC1, yend = PC2), color = '#dddddd') +
+  geom_point(color = 'steelblue', alpha = 0.5) +
+  geom_point(aes(x = PC1, y = PC2), color = 'black') +
+  ggtitle('Factor Analysis Result')
 ```
 
 ![png](fig/pca_vs_fa/iris_pca.png)
@@ -59,14 +59,15 @@ PCA와는 달리 원에 가까운 error term 분포를 가진다.
 ```r
 iris %>%
   select(Sepal.Length, Sepal.Width) %>%
-  mutate_all(~ .x - mean(.x)) %>%
-  bind_cols(data.frame(fa_iris$scores %*% t(fa_iris$loadings)) %>%
-              select(PC1 = Sepal.Length, PC2 = Sepal.Width)) %>%
+  bind_cols(as_tibble(fa_iris$scores %*% t(fa_iris$loadings)) %>%
+              select(PC1 = Sepal.Length, PC2 = Sepal.Width) %>%
+              mutate(PC1 = PC1 + mean(iris$Sepal.Length),
+                     PC2 = PC2 + mean(iris$Sepal.Width))) %>%
   ggplot(aes(x = Sepal.Length, y = Sepal.Width)) +
-    geom_segment(aes(xend = PC1, yend = PC2), color = '#cccccc') +
-    geom_point(color = 'steelblue') +
-    geom_point(aes(x = PC1, y = PC2), color = 'black') +
-    ggtitle('Factor Analysis Result')
+  geom_segment(aes(xend = PC1, yend = PC2), color = '#cccccc') +
+  geom_point(color = 'steelblue') +
+  geom_point(aes(x = PC1, y = PC2), color = 'black') +
+  ggtitle('Factor Analysis Result')
 ```
 
 ![png](fig/pca_vs_fa/iris_fa.png)
