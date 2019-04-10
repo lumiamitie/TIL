@@ -6,7 +6,7 @@
 
 # 1. 시작하기
 
-```{r}
+```r
 library(tidyverse)
 library(rstan)
 
@@ -16,7 +16,7 @@ rstan_options(auto_write = TRUE)
 
 Question : **코드를 잘 살펴보고, 아래의 코드가 잘 동작하는지 확인해보세요.**
 
-```{r}
+```r
 # The Stan model as a string.
 model_string = "
 data {
@@ -63,7 +63,7 @@ stan_samples = stan(model_code = model_string, data = data_list)
     - `theta1`의 평균은 0.25 이고, 95% 신뢰구간은 [0.06, 0.52] 이다
     - `theta2`의 평균은 0.58 이고, 95% 신뢰구간은 [0.31, 0.82] 이다
 
-```{r}
+```r
 # summarizing the posterior distribution
 stan_samples
 
@@ -82,16 +82,20 @@ stan_samples
 # convergence, Rhat=1).
 ```
 
-```{r}
+```r
 plot(stan_samples)
+# ci_level: 0.8 (80% intervals)
+# outer_level: 0.95 (95% intervals)
 ```
+
+![png](fig/stan_quiz_190410/output_02.png)
 
 # 2. 샘플링 결과 다루기
 
 파라미터 각각에 대한 샘플링 결과를 살펴보고 싶다면, stan object를 데이터 프레임으로 변환하여 보는 것이 편리하다.
 변환하면 각각의 파라미터를 컬럼별로 확인할 수 있다.
 
-```{r}
+```r
 df_samples = stan_samples %>%
   extract() %>%
   as_tibble()
@@ -119,7 +123,7 @@ Answer
 - 0.2325
 - 샘플링 결과에서 `abs(theta1 - theta2)` 를 계산하고, 이 값이 0.2보다 작은 비율을 구한다
 
-```{r}
+```r
 # 구해야 하는 확률은 아래 그래프에서 색칠된 구간에 해당된다
 ggplot(df_samples, aes(x = abs(theta1 - theta2))) +
   geom_density() +
@@ -133,7 +137,7 @@ ggplot(df_samples, aes(x = abs(theta1 - theta2))) +
 
 ![png](fig/stan_quiz_190410/output_01.png)
 
-```{r}
+```r
 # 두 비율의 차이가 0.2보다 작을 확률을 계산한다
 df_samples %>%
   mutate(diff = abs(theta1 - theta2)) %>%
