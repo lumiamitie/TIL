@@ -145,3 +145,73 @@ df_samples %>%
   pull(p)
 # [1] 0.2325
 ```
+
+# 3. 효과 좋은 약 찾기
+
+농부 김씨는 많은 수의 소를 키우고 있습니다.
+이 중에서 10마리의 소에게 A약을 주고, 10마리의 소에게는 B약을 주었습니다.
+그리고 여름동안 소가 병에 걸리는지 (0) 아니면 건강한지(1) 측정했습니다.
+
+그 결과는 다음과 같았습니다.
+
+```{r}
+cowA = c(0, 1, 0, 0, 0, 0, 1, 0, 0, 0)
+cowB = c(0, 0, 1, 1, 1, 0, 1, 1, 1, 0)
+```
+
+Question : **약이 얼마나 효과적이었을까요? A약이 B보다 낫거나 별로였다면 그 근거는 무엇인가요?**
+
+```{r}
+data_list_q3 = list(y1 = cowA, y2 = cowB, n1 = length(cowA), n2 = length(cowB))
+stan_samples_q3 = stan(model_code = model_string, data = data_list_q3)
+```
+
+Answer
+
+- A약이 더 나을 확률은 `0.0425` 로 계산되었다
+- 또한 `A약의 효과 - B약의 효과` 의 90% 신용구간은 `[-0.628, -0.0126]` 이다
+- 따라서 B약이 더 나을 것으로 보인다
+
+```r
+stan_samples_q3
+# Inference for Stan model: 44b4fe5b1a77520188e78f1edb27b9a4.
+# 4 chains, each with iter=2000; warmup=1000; thin=1;
+# post-warmup draws per chain=1000, total post-warmup draws=4000.
+#
+#          mean se_mean   sd   2.5%    25%    50%    75%  97.5% n_eff Rhat
+# theta1   0.25    0.00 0.12   0.06   0.16   0.24   0.33   0.53  3206    1
+# theta2   0.59    0.00 0.14   0.30   0.49   0.59   0.69   0.84  3237    1
+# lp__   -15.98    0.03 1.09 -18.84 -16.40 -15.66 -15.20 -14.92  1687    1
+#
+# Samples were drawn using NUTS(diag_e) at Thu Apr 11 17:44:21 2019.
+# For each parameter, n_eff is a crude measure of effective sample size,
+# and Rhat is the potential scale reduction factor on split chains (at
+# convergence, Rhat=1).
+
+df_samples_q3 = stan_samples_q3 %>%
+  extract() %>%
+  as_tibble()
+
+# A약이 더 나을 확률
+p_is_a_better = df_samples_q3 %>% 
+  mutate(is_a_better = theta1 > theta2) %>%
+  summarise(result = mean(is_a_better)) %>%
+  pull(result)
+# [1] 0.0425
+
+# B약이 더 나을 확률
+p_is_b_better = df_samples_q3 %>%
+  mutate(is_b_better = theta1 < theta2) %>%
+  summarise(result = mean(is_b_better)) %>%
+  pull(result)
+# [1] 0.9575
+
+# 90% Credible Interval 계산
+df_samples_q3 %>%
+  mutate(diff_effect = theta1 - theta2) %>%
+  summarise(diff_effect_q05 = quantile(diff_effect, 0.05),
+            diff_effect_q95 = quantile(diff_effect, 0.95))
+#   diff_effect_q05 diff_effect_q95
+#             <dbl>           <dbl>
+# 1          -0.628         -0.0126
+```
