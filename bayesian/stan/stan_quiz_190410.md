@@ -193,7 +193,7 @@ df_samples_q3 = stan_samples_q3 %>%
   as_tibble()
 
 # A약이 더 나을 확률
-p_is_a_better = df_samples_q3 %>% 
+p_is_a_better = df_samples_q3 %>%
   mutate(is_a_better = theta1 > theta2) %>%
   summarise(result = mean(is_a_better)) %>%
   pull(result)
@@ -214,4 +214,111 @@ df_samples_q3 %>%
 #   diff_effect_q05 diff_effect_q95
 #             <dbl>           <dbl>
 # 1          -0.628         -0.0126
+```
+
+# 4. 특별 식단의 효과 측정하기
+
+농부 김씨는 많은 수의 소를 키우고 있습니다.
+김씨는 최근 식단 조절로 소들의 우유 생산량이 크게 증가했다는 소문을 들었습니다.
+그래서 일부 소에게 특별 식단을 주고, 우유 생산량이 증가하는지 측정했습니다.
+
+특별 식단을 준 10마리의 소와 일반 식단을 준 15마리의 소에게서 한 달간 측정한 결과,
+다음과 같은 데이터를 얻을 수 있었습니다.
+
+```r
+diet_milk = c(651, 679, 374, 601, 401, 609, 767, 709, 704, 679)
+normal_milk = c(798, 1139, 529, 609, 553, 743, 151, 544, 488, 555, 257, 692, 678, 675, 538)
+```
+
+Question : **식단 변경이 정말 효과가 있었을까요? 특별식단을 먹은 소의 우유 생산량이 증가했나요?**
+
+- Hint
+    - 정규분포 (`normal` 함수를 사용합니다) 를 사용해보세요
+    - `mu` 와 `sigma` 변수에 다양한 prior를 적용해볼 수 있습니다 (특정한 분포를 지정하지 않으면 `uniform` 분포가 적용됩니다)
+
+```r
+model_string_q4 = "
+data {
+  // Number of data points
+  int n1;
+  int n2;
+  // Number of liters of milk
+  real<lower=0> y1[n1];
+  real<lower=0> y2[n2];
+}
+
+parameters {
+  // Priors for Normal Distribution
+  real mu1;
+  real mu2;
+  real sigma1;
+  real sigma2;
+}
+
+model {
+  // Distribution of milk produce
+  y1 ~ normal(mu1, sigma1);
+  y2 ~ normal(mu2, sigma2);
+}
+
+generated quantities {
+}
+"
+
+data_list_q4 = list(y1 = diet_milk, y2 = normal_milk, n1 = length(diet_milk), n2 = length(normal_milk))
+
+# Compiling and producing posterior samples from the model.
+stan_samples_q4 = stan(model_code = model_string_q4, data = data_list_q4, seed = 123)
+```
+
+```r
+stan_samples_q4
+# Inference for Stan model: a3ccfe7990b06f6c68f42a0fcfd64f4c.
+# 4 chains, each with iter=2000; warmup=1000; thin=1;
+# post-warmup draws per chain=1000, total post-warmup draws=4000.
+#
+#           mean se_mean    sd    2.5%     25%     50%     75%   97.5% n_eff Rhat
+# mu1     618.19    1.03 52.51  517.53  585.67  617.80  650.66  726.47  2614    1
+# mu2     599.54    1.31 65.43  470.08  558.14  598.28  640.69  730.65  2479    1
+# sigma1  154.22    1.27 46.40   94.28  122.28  145.44  173.98  275.95  1339    1
+# sigma2  250.13    1.13 52.78  170.43  213.18  241.69  279.05  378.19  2191    1
+# lp__   -144.00    0.05  1.69 -148.24 -144.83 -143.63 -142.76 -141.82  1031    1
+#
+# Samples were drawn using NUTS(diag_e) at Fri Apr 12 01:51:42 2019.
+# For each parameter, n_eff is a crude measure of effective sample size,
+# and Rhat is the potential scale reduction factor on split chains (at
+# convergence, Rhat=1).
+```
+
+```r
+plot(stan_samples_q4)
+```
+
+![png](fig/stan_quiz_190410/output_03.png)
+
+Answer
+
+- 특별 식단이 우유 생산량을 증가시켰을 확률은 `0.61725` 이다
+- 특별 식단과 일반 식단의 차이에 대해서 90% 신용구간을 구해보면 `[-118, +155]` 이다
+- 따라서 **현재 데이터로는 특별 식단으로 인해 우유 생산량이 증가했다고 보기 어렵다**
+
+```r
+df_samples_q4 = stan_samples_q4 %>%
+  extract() %>%
+  as_tibble()
+
+# mu1 > mu2 일 확률
+df_samples_q4 %>%
+  mutate(is_diet_effective = mu1 > mu2) %>%
+  summarise(is_diet_effective = mean(is_diet_effective)) %>%
+  pull(is_diet_effective)
+# [1] 0.61725
+
+df_samples_q4 %>%
+  mutate(diff_effect = mu1 - mu2) %>%
+  summarise(diff_q05 = quantile(diff_effect, 0.05),
+            diff_q95 = quantile(diff_effect, 0.95))
+#   diff_q05 diff_q95
+#      <dbl>    <dbl>
+# 1    -118.     155.
 ```
