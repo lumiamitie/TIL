@@ -436,3 +436,104 @@ df_samples_q5 %>%
 #      <dbl>    <dbl>
 # 1    -141.     481.
 ```
+
+# 6. 닭의 식단 바꿔보기
+
+농부 김씨는 많은 닭도 키우고 있습니다. 닭도 식단을 바꾸면 계란 생산량이 늘어날지 시도해보기로 했습니다.
+한 주 동안 일반 닭과 변경된 식단을 먹은 닭의 계란 생산량은 다음과 같습니다.
+
+```r
+diet_eggs = c(6, 4, 2, 3, 4, 3, 0, 4, 0, 6, 3)
+normal_eggs = c(4, 2, 1, 1, 2, 1, 2, 1, 3, 2, 1)
+```
+
+Question : **닭에게도 특별 식단이 효과가 있었나요? 특별 식단을 먹은 닭이 더 많은 계란을 낳았을까요?**
+
+- Hint
+    - 포아송 분포는 count 값을 나타내기 위해 종종 사용됩니다
+    - 포아송 분포는 lambda 라는 한 가지 파라미터를 가집니다 (이 값은 평균 count값을 의미합니다)
+    - Stan에서는 다음과 같이 포아송 분포를 사용할 수 있습니다
+        - `y ~ poisson(lambda);`
+        - 이 때, lambda는 0보다 크거나 같아야 합니다 (`real<lower=0> lambda;`)
+
+```r
+model_string_q6 = "
+data {
+  // Number of data points
+  int n1;
+  int n2;
+  // Number of eggs
+  int<lower=0> y1[n1];
+  int<lower=0> y2[n2];
+}
+
+parameters {
+  // Priors for Poisson Distribution
+  real<lower=0> lambda1;
+  real<lower=0> lambda2;
+}
+
+model {
+  // Distribution of egg produce
+  y1 ~ poisson(lambda1);
+  y2 ~ poisson(lambda2);
+}
+
+generated quantities {
+}
+"
+
+data_list_q6 = list(y1 = diet_eggs, y2 = normal_eggs, n1 = length(diet_eggs), n2 = length(normal_eggs))
+stan_samples_q6 = stan(model_code = model_string_q6, data = data_list_q6, seed = 123)
+```
+
+```r
+stan_samples_q6
+# Inference for Stan model: f1d6b6624d4ff74ee77e86752bcc49f4.
+# 4 chains, each with iter=2000; warmup=1000; thin=1;
+# post-warmup draws per chain=1000, total post-warmup draws=4000.
+#
+#          mean se_mean   sd  2.5%   25%   50%   75% 97.5% n_eff Rhat
+# lambda1  3.27    0.01 0.55  2.27  2.89  3.24  3.63  4.42  3392    1
+# lambda2  1.92    0.01 0.43  1.15  1.61  1.89  2.19  2.84  3117    1
+# lp__    -1.79    0.02 1.02 -4.57 -2.20 -1.49 -1.05 -0.77  1741    1
+#
+# Samples were drawn using NUTS(diag_e) at Thu Apr 18 21:39:18 2019.
+# For each parameter, n_eff is a crude measure of effective sample size,
+# and Rhat is the potential scale reduction factor on split chains (at
+# convergence, Rhat=1).
+```
+
+```r
+plot(stan_samples_q6)
+```
+
+![png](fig/stan_quiz_190410/output_05.png)
+
+Answer
+
+- 특별 식단을 먹은 닭의 계란 생산량이 더 높았을 확률은 **97.4%** 이다
+- 따라서 특별 식단을 먹은 닭의 계란 생산량이 높다고 볼 수 있다
+- 특별 식단을 먹은 닭이 평균적으로 계란을 **1.36개 더** 생산 한 것으로 보인다
+
+```r
+# 특별 식단을 먹은 닭의 계란 생산량이 더 높을 확률
+stan_samples_q6 %>%
+  extract() %>%
+  as_tibble() %>%
+  summarise(is_diet_effective = mean(lambda1 > lambda2))
+# # A tibble: 1 x 1
+#   is_diet_effective
+#               <dbl>
+# 1             0.974
+
+# 특별 식단과 일반 식단의 평균적인 계란 생산량 차이
+stan_samples_q6 %>%
+  extract() %>%
+  as_tibble() %>%
+  summarise(mean_difference = mean(lambda1 - lambda2))
+# # A tibble: 1 x 1
+#   mean_difference
+#             <dbl>
+# 1            1.36
+```
