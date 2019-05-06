@@ -8,11 +8,26 @@
 
 ## Setup code
 
-1. 아래 **Setup Code** 를 한 번 동작시킨다
+```
+!apt-get install libssl-dev > /dev/null
+!wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh
+!chmod +x ./Miniconda3-latest-Linux-x86_64.sh
+!./Miniconda3-latest-Linux-x86_64.sh -b -p /conda  > /dev/null 2>&1
+!/conda/bin/conda install -c r r-rstan r-irkernel gxx_linux-64 -y -q > /dev/null 2>&1
+!/conda/bin/R -e "IRkernel::installspec(name = 'python2', displayname = 'R', user = FALSE)"  > /dev/null 2>&1
+!mkdir /root/.R/
+!echo "CXX14FLAGS=-O3 -mtune=native -march=native -Wno-ignored-attributes -Wno-deprecated-declarations" > /root/.R/Makevars
+import os
+os._exit(00)
+```
+
+## R 커널 설치 과정
+
+1. 위 **Setup Code** 를 한 번 동작시킨다
     - 설치하는데 2~3분 정도 소요된다
 2. **런타임 > 세션관리 > (현재 세션) 종료** 를 선택한다
     - **Runtime > Manage Sessions > TERMINATE**
-3. **런타임 다시 시작 (Restart Runtime)** 을 클릭하고, 세션에 **RECONNECT** 한다
+3. **런타임 다시 시작 (Restart Runtime)** 을 클릭하고, 세션에 **"다시 연결"(RECONNECT)** 한다
     - 설치가 완료되면 python2 커널이 R 커널로 바뀐다
 4. 이제 R Code를 실행시킬 수 있다 (Setup Code는 실행시키지 않는다)
-5. Reset All Runtimes (모든 런타임 재설정) 를 누르면 초기화되어 파이썬 커널로 되돌아간다.
+5. Reset All Runtimes (모든 런타임 재설정) 를 누르면 초기화되어 파이썬 커널로 되돌아간다
