@@ -307,3 +307,56 @@ Randomized Experiments 의 또다른 문제는, 현실에서 구현하기 어렵
     - **Selection Problem** 때문이다
     - 어떠한 변수를 사람들이 선택할 수 있게 되면 선택으로 인한 편향이 생길 수 있다
     - Medicaid가 마음에 드는 사람들은 굳이 응답을 하지 않은 반면, 불만족스러운 사람들은 설문에 적극적으로 응답하는 경우가 발생할 수 있다
+
+# Long-term Average Treatment Effects
+
+## Introducing Perry Preschool
+
+초기의 가장 유명했던 사회과학 실험인 Perry Preschool 프로젝트에 대해 알아보자.
+
+- 1962 ~ 1967년 동안 어린이들을 5개 코호트로 나누었다
+    - 모든 어린이들은 같은 도시에 살았다
+    - 소득수준이 낮은 흑인 아이들을 대상으로 한다
+- 총 123명을 대상으로 한다
+    - 이중에서 65명은 Control Group, 68명은 Treatment Group으로 구성되었다
+    - Treatment 대상자는 주 5일 pre-school을 나가고, 매주 사회복지사(Social Worker)가 90분씩 가정 방문을 하게 되었다
+    - Control Group에는 아무런 조치를 하지 않는다
+- 오래 전에 이루어진 실험이 왜 중요할까?
+    - 오랜 기간에 걸쳐 대상자들의 학업 성취도, 대학 진학 여부, 임금 수준, 범죄 등 다양한 정보들을 수집할 수 있었다
+    - 따라서 이 실험을 바탕으로 많은 연구들이 진행될 수 있었다
+- 이 중에서 한 가지 논문을 살펴보려고 한다
+    - C. Belfield, M. Nores, S. Barnett, L.schweinhart, "The High/Scope Perry Preschool Program: Cost-Benefit Analysis from the Age-40 Followup"
+    - 다양한 raw data를 제공하고, treatment의 효과를 측정하고자 한다
+
+## Comparing Educational Attainment Data
+
+Preschool에 가는 것이 범죄 여부에 얼마나 영향을 미치는지 알아보자.
+
+- 남성과 여성간에 차이가 있는지 확인하기 위해 두 그룹을 따로 비교한다
+- 각종 범죄를 저지른 비율과 집행유예/징역 선고받은 기간이 정리되어 있다
+
+간단하게 성별로 징역 기간을 정리해보면 다음과 같다.
+
+- 남성의 경우 Preschool은 나온 경우 `53->32` 로 줄어든 것을 볼 수 있다
+- 반면 여성은 `4->9` 로 오히려 증가했다
+- 이것은 샘플 수가 작아서 발생한 노이즈일까? 아니면 실제로 의미있는 효과일까?
+
+​| (Period)     | Males     | Females  |
+| ------------ | --------- | -------- |
+| Preschool    | 32 months | 9 months |
+| No Preschool | 53 months | 4 months |
+
+## Calculating the Lifetime Cost of Crime
+
+- 이전에는 preschool에 가는지 여부를 각종 범죄를 저지른 비율과 집행유예/징역 선고 기간과 비교했다
+- 이번에는 모든 수치를 **범죄로 인한 비용 (Total Costs of Crime)** 이라는 하나의 지표로 환산하여 비교한다
+
+| (Lifetime) | Preschool  | No Preschool |
+| ---------- | ---------- | ------------ |
+| Males      | $1,075,359 | $1,808,253   |
+| Females    | $291,020   | $315,005     |
+
+- 남성의 경우 Preschool에 들어가면 비용이 $732,894 감소하는 효과를 거두었다
+- 여성의 경우 Preschool에 들어가면 비용이 $23,985 감소하는 효과를 거두었다
+- 전체적으로는 Preschool에 들어가면 비용이 $378,440 감소하는 효과를 거두었다
+- => Preschool에 가면 전반적인 범죄로 인한 비용을 낮추는 효과를 거둘 수 있다
