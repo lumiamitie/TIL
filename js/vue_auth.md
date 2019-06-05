@@ -360,3 +360,50 @@ export default new Vuex.Store({
   }
 })
 ```
+
+## 353. Accessing other Resources from Vuex
+
+이제 store에 저장한 토큰을 사용해보자. `dashboard.vue` 컴포넌트의 GET 요청을 보내려면 토큰이 필요하다.
+
+- 우선 기존의 GET 요청을 store의 action으로 보낸다
+    - `fetchUser({commit})` 액션을 만든다
+    - 해당 액션안으로 기존의 axios 요청을 옮겨야 하는데 몇 가지 주의사항이 있다
+        - store.js 에서 임포트한 axios 인스턴스는 데이터를 가져오기 위한 것이 아니다
+        - 또 사용자 정보를 가져오고 싶은데, 지금은 회원가입을 하더라도 firebase에 데이터를 저장하는 것이 아니라 사용자 인증만 시켜두고 정보는 다른 데이터베이스에 저장한다
+- 따라서 **토큰을 가져오기 전에 두 가지 해야 할 일이 있다**
+    - 첫 번째는 회원가입을 할 때 then 블록이 완료되면, 또 다른 action을 dispatch해서 유저 정보를 firebase에 저장하는 것이다
+        - 인증을 위한 데이터베이스 말고 데이터 저장을 위한 데이터베이스에 저장하기 위해서다
+        - 왜냐면 Firebase Authentication Database에는 우리가 접근할 수 없기 때문
+    - 두 번째는 Firebase 인증체계 바깥에서 데이터를 저장하거나 가지고 오기 위한 baseURL을 구성하는 것이다
+- store.js 에서 axios를 새로 임포트하고 globalAxios 라고 이름붙여보자
+    - 이 인스턴스가 유저 데이터를 저장하고 받아오기 위한 것이다
+    - `storeUser({commit}, userData)` 액션을 추가한다
+        - 여기서 globalAxios 인스턴스를 통해 POST 요청을 보낸다
+        - globalAxios 인스턴스는 main.js에서 정의한 디폴트 baseURL의 영향을 받는다
+        - 따라서 그냥 `globalAxios.post('/users.json', userData)` 을 사용한다
+    - storeUser 액션은 데이터를 받을 때 수행되어야 한다
+        - 액션의 인자로 사용되는 context 객체는 dispatch 메서드를 가지고 있다
+        - signup 액션을 다시 정의해보자
+            `- signup({commit, dispatch}, authData) { ... }`
+            - 이제 회원가입이 발생할 때 storeUser 액션을 dispatch 하는 작업까지 포함한다
+                - `dispatch('storeuser', authData)`
+    - fetchUser 에서 사용한 axios도 globalAxios로 변경한다
+        - 그리고 then 블록 안에서 `commit('storeUser', users[0])` 을 통해 데이터를 저장한다
+
+이제 테스트해보기 전에, 데이터베이스의 Rules로 돌아가서 인증받은 사용자만 write 가능하도록 수정한다.
+
+- Before : `".write": true`
+- After : `".write": "auth != null"`
+- 데이터를 보내는 시점에는 (storeUser) 사용자가 인증되어 있을 것이기 때문이다
+
+여기서는 Mutation을 통해 데이터를 저장하고 있다.
+따라서 `storeUser(state, user)` mutation을 생성하고 여기서 받은 user를 `state.user` 에 저장한다.
+이제 마지막으로 getter 를 추가한다. `user(state) { return state.user }`
+
+- dashboard.vue 에서 데이터를 가져오는 작업을 해보자
+    - computed 프로퍼티를 생성하고 getter를 통해 데이터를 가져온다
+        - `email() { return this.$store.getters.user.email }`
+    - created 훅에서는 fetchUser 액션을 dispatch 한다
+        - `this.$store.dispatch('fetchUser')`
+
+하지만 그래도 unauthorized 에러가 발생한다.. 요청을 보낼 때 토큰을 함께 보내지 않았기 때문이다!
