@@ -407,3 +407,119 @@ export default new Vuex.Store({
         - `this.$store.dispatch('fetchUser')`
 
 하지만 그래도 unauthorized 에러가 발생한다.. 요청을 보낼 때 토큰을 함께 보내지 않았기 때문이다!
+
+## 354. Sending the Token to the Backend
+
+현재는 토큰을 받아서 store에만 넣어두고, firebase database로 http 요청을 보낼 때 함께 보내지는 않고 있다. 이것을 개선해보자.
+
+- 토큰을 통해 보내는 것은 기본적으로 엄청나게 간단하다
+    - storeUser 에서 context 객체를 가져올 때 현재 state도 함께 가져온다
+    - state는 우리가 토큰을 저장할 곳을 말한다
+    - state.idToken 값이 존재하지 않으면 (null), globalAxios 객체를 이용한 요청을 하지 않게끔 한다
+    - 그 외의 경우에는 토큰이 존재하기 때문에, 백엔드에서 요구하는 조치를 취한다
+        - 어떤 백엔드에서는 인증을 위한 헤더를 추가해야 할 수 있다
+        - Firebase의 경우 auth 라는 추가 파라미터를 url에 추가해야 한다
+        - '/users.json?auth=' + state.idToken 형태가 된다
+    - storeUser 이외에 다른 요청도 동일하게 수정한다 (fetchUser)
+    - 중요한 것은 store의 state 로부터 정보를 추출해서 요청을 보낼 때 추가한다는 점이다
+
+## 355. Protecting Routes (Auth Guard)
+
+이번에는 인증되지 않았을 때 dashboard에 접근하지 못하도록 설정해보자.
+기능을 추가하기 위해 라우팅 섹션에서 다루었던 Navigation Guard를 사용한다.
+
+- 특정한 route로 접근하는 것을 막기 위해, route.js 에서 beforeEnter 프로퍼티를 설정한다
+    - beforeEnter 프로퍼티는 3개의 인자를 가지는 메서드이다
+        - to : 어디로 향하는지에 대한 정보
+        - from : 어디서 왔는지에 대한 정보
+        - next : navigating을 진행하기 위한 함수
+    - 함수 안에서 사용자가 토큰을 가지고 있는지 여부를 확인한다
+        - 이 정보를 확인하기 위해 store.js 를 임포트한다
+        - 토큰이 존재할 경우 next() 를 실행시킨다
+        - 없으면 next('/signin') 메서드를 통해 로그인 페이지로 리다이렉트시킨다
+
+## 356. Updating the UI State (based on Authentication State)
+
+이번에는 인증받지 않은 경우 아예 링크가 보이지 않게끔 해보자.
+
+- `header.vue` 에서 링크가 인증 상태에 따라 변하게 설정해야 한다
+    - 우선, store.js 에 새로운 getter isAuthenticated 를 만든다
+    - isAuthenticated 는 state를 받아서 state.idToken 이 null인지 여부를 반환한다
+- `header.vue` 에서 getter를 사용할 수 있도록 컴포넌트를 설정한다
+    - computed 프로퍼티에 auth 를 생성하고, `this.$store.getters.isAuthenticated` 를 반환한다
+    - 링크에 v-if 를 적용하여 auth 의 조건에 따라 표시여부를 결정하도록 한다
+- 이제 인증 상태에 따라 UI를 업데이트 할 수 있게되었다!
+
+## 357. Adding User Logout
+
+유저가 직접 로그아웃할 수 있도록 링크를 추가해보자. 로그아웃 버튼과 메서드를 추가하고 이벤트리스너에 등록해야 한다.
+
+- 로그아웃 메서드에서는 token과 user id값을 제거하는 액션을 디스패치해야 한다
+    - clearAuthData mutation을 생성해서 idToken과 userId를 null로 바꾸도록 한다
+    - logout action을 생성하고, 이 안에서 clearAuthData 를 커밋한다
+- header.vue 로 돌아와서, onLogout() 메서드에서 logout 액션을 디스패치한다
+    - 그리고 인증되었을 때만 로그아웃 버튼이 보이도록 v-if 로 상태를 체크 해준다
+- 이번에는 로그아웃 하면 다른 페이지로 이동하도록 해보자
+    - store.js 에서 router를 임포트한다
+    - logout 액션 안에서 커밋 후에 페이지를 이동하도록 한다
+    - router.replace('/signin')
+
+- 현재 우리가 만들고 있는 앱의 한 가지 단점은 리프레스할 때마다 인증이 초기화된다는 것이다.
+    - 사용자가 불편함을 느끼지 않도록 세션을 유지시키면 좋겠다
+- 또한 파이어베이스에서 보내주는 토큰은 한 시간 동안만 유효하다
+      - 따라서 한 시간이 지나면 자동으로 로그아웃 시키는 로직도 필요하다
+
+## 358. Adding Auto Logout
+
+유저가 한 시간 이상 앱에 머물러 토큰이 만료된 경우, 자동으로 로그아웃 시키는 기능을 추가해보자.
+
+- 한 가지 중요한 것은 파이어베이스가 요청 때마다 리프레시 토큰을 발급해준다는 것이다
+    - ID token과는 다르게 이 값은 만료되지 않는다
+    - 리프레시 토큰을 특정 url 엔드포인트로 보내면 새로운 ID 토큰을 발급받을 수 있다
+    - [Firebase REST docs : Exchange custom token for an ID and refresh token](https://firebase.google.com/docs/reference/rest/auth/?hl=ko#section-verify-custom-token)
+    - 따라서 이러한 방식을 사용하면 끊기지 않고 지속되는 세션을 구현할 수 있다
+- 리프레시 토큰을 이용하게 될 경우 보안상으로는 덜 안전하다
+    - 리프레시 토큰은 만료되지 않기 때문이다
+    - 따라서 누구든지 리프레시 토큰을 확보하게 될 경우, 새로운 ID 토큰을 생성할 수 있다
+    - 제3자가 리프레시 토큰을 가져가기 어렵게 하기 위해서 로컬스토리지에 저장한다
+    - 이렇게 하면 cross-site scripting attack을 통해서만 접근할 수 있는데, 이건 기본적으로 vue에서 막고 있다
+    - 따라서 덜 안전하지만, 위험한 수준은 아니라고 볼 수 있다
+    - 여기서는 리프레시 토큰을 이용하는 방법을 구현하지 않는다
+- 인증이 만료된 유저를 어떻게 하면 자동으로 로그아웃 시킬 수 있을까?
+    - **시간에 따라 자동으로 액션을 디스패치시킬 수 있는 타이머가 필요하다**
+    - setLogoutTimer 액션을 추가한다
+        - context 객체로부터는 commit 인자를 받고, 추가로 expiration time을 받는다
+        - setTimeout 함수를 사용해서 타이머를 만든다
+        - expirationTime * 1000 만큼의 시간이 지나면 logout 액션을 커밋한다
+            - 1000을 곱하면서 자동으로 문자열이 real number로 변환된다
+    - setLogoutTimer 액션을 login, signup 액션 내부에서 디스패치한다
+        - `dispatch('setLogoutTimer', res.data.expiresIn)`
+
+## 359. Adding Auto Login
+
+- 이번에는 리프레시 하더라도 로그인이 유지되게끔 수정해보자
+- 이렇게 하기 위해서는 토큰을 vuex store가 아닌 다른 곳에 저장해두어야 한다
+    - 브라우저가 제공하는 localStorage API를 사용하여 구현할 수 있다
+        - `localStorage.setItem('key', value)`
+    - 토큰, 유저 id, 만료시점을 로컬 스토리지에 저장해둔다
+        - expiresIn보다는 만료되는 시점을 저장하는 것이 더 좋은 방식이다
+        - `new Date()` 를 통해 현재 시점의 시간을 구하고, expiresIn을 더한다
+            - `new Date(now.getTime() + res.data.expiresIn * 1000)`
+            - 밀리세컨드 단위의 만료시점 시간을 구하고 Date로 변환한다
+- 로컬스토리지에 저장한 값을 크롬 개발자도구에서 확인해보자
+    - Application > Storage > Local Storage > app의 URL을 선택한다
+- 이제 저장한 값을 꺼내오는 방법에 대해 알아보자
+    - 어플리케이션이 시작할 때 로컬스토리지에 접근하여 토큰 등 값을 가져와야 한다
+    - 일단 store.js 에 `tryAutoLogin()` 이라는 새로운 액션을 생성한다
+        - 로컬스토리지에 접근하여 저장해둔 값이 있으면 가져온다
+        - `localStorage.getItem('token')`
+    - 가져온 토큰값을 확인해야한다
+        - 토큰이 없거나 false 값이면 아무런 값 없이 그냥 리턴해버린다
+        - 토큰이 있다면 expirationDate 도 가져와서 토큰이 아직 유효한지 확인한다
+        - 토큰이 유효할 경우 로그인을 시도한다 (authUser mutation을 커밋한다 )
+    - app.vue 파일의 created() 훅 내부에서 tryAutoLogin 액션을 디스패치한다
+- 한 가지 문제는 로그아웃하더라도 로컬 스토리지를 정리하지 않는다는 점이다
+    - logout 액션에서 로컬스토리지의 모든 값을 제거하자
+    - `localStorage.clear()` 를 쓰면 모든 값을 제거할 수 있지만, 다른 항목들도 있어서 모든 값을 제거하면 안될 수도 있다
+    - `localStorage.removeItem()` 으로 각각 제거한다
+    - 이제 로그아웃하면서 로컬스토리지의 값들이 제거된다
