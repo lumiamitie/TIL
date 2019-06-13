@@ -135,3 +135,232 @@ function getSchema(request) {
   return { schema: fields };
 }
 ```
+
+## getData() 정의하기
+
+데이터 스튜디오는 컨넥터를 통해 field에 정의된 데이터를 가져올 때마다 `getData()` 함수를 호출한다.
+`getData()` 함수가 반환하는 값을 바탕으로 대시보드의 차트를 업데이트하게 된다.
+`getData()` 함수는 다음과 같은 상황에 호출될 수 있다.
+
+- 사용자가 대시보드에 차트를 추가할 때
+- 사용자가 차트를 수정할 때
+- 사용자가 대시보드를 볼 때
+- 사용자가 컨트롤(기간, 필터, 데이터) 수정할 때
+- 데이터스튜디오에서 데이터를 샘플링해야 할 때
+
+### 1) Request 객체 이해하기
+
+데이터 스튜디오는 `getData()`를 사용할 때 request 객체를 보낸다.
+
+```javascript
+{
+  configParams: { // getConfig() 에서 설정된 값
+    package: 'jquery'
+  },
+  // scriptParams: { // 컨넥터 실행을 위해 필요한 정보
+  //   ...
+  // },
+  dateRange: { // getConfig()에서 필요로 할 경우 넘길 날짜 정보
+    endDate: '2017-07-16',
+    startDate: '2017-07-18'
+  },
+  fields: [ // 요청받은 필드의 이름
+    {
+      name: 'day',
+    },
+    {
+      name: 'downloads',
+    }
+  ]
+}
+```
+
+### 2) getData 함수의 구조
+
+`getData()` 함수에서 결과값을 반환하기 위해서는 스키마와 데이터를 동시에 제공해야 한다.
+코드를 다음과 같이 크게 세 가지 단계로 나누어 볼 수 있다.
+
+- 요청받은 필드에 대한 스키마를 생성한다
+- API를 통해 데이터를 받아온다
+- 파싱한 데이터를 요청받은 필드에 맞게 가공한다
+
+#### 스키마 생성하기
+
+```javascript
+// Create schema for requested fields
+var requestedFieldIds = request.fields.map(function(field) {
+  return field.name;
+});
+var requestedFields = getFields().forIds(requestedFieldIds);
+```
+
+#### API를 통해 데이터 받아오기
+
+예제로 사용할 [npm API](https://github.com/npm/registry/blob/master/docs/download-counts.md)는 다음과 같이 구성되어 있다.
+
+```
+https://api.npmjs.org/downloads/point/{start_date}:{end_date}/{package}
+
+Example : https://api.npmjs.org/downloads/range/2019-06-01:2019-06-02/vue
+Response :
+{
+  "start":"2019-06-01",
+  "end":"2019-06-02",
+  "package":"vue",
+  "downloads":[
+    {"downloads":41885,"day":"2019-06-01"},
+    {"downloads":40816,"day":"2019-06-02"}
+  ]
+}
+```
+
+API를 통해 데이터를 요청하고 결과를 파싱한다.
+
+```javascript
+// Fetch and parse data from API
+var url = [
+  'https://api.npmjs.org/downloads/range/',
+  request.dateRange.startDate,
+  ':',
+  request.dateRange.endDate,
+  '/',
+  request.configParams.package
+];
+var response = UrlFetchApp.fetch(url.join(''));
+var parsedResponse = JSON.parse(response).downloads;
+```
+
+#### 필드에 맞게 데이터 가공하기
+
+결과를 반환할 때, 스키마는 `schema` 프로퍼티, 데이터는 `rows` 프로퍼티를 통해 전달한다.
+데이터는 row들의 리스트 형태로 전달하는데, `values` 배열에서 값의 순서는 스키마의 필드 순서와 동일해야 한다.
+예제에서는 다음과 같은 형태로 구성된다.
+
+```
+{
+  schema: requestedFields.build(),
+  rows: [
+    {
+      values: [ 41885, '20190601']
+    },
+    {
+      values: [ 40816, '20190602']
+    }
+  ]
+}
+```
+
+다음 함수를 사용해서 요청받은 필드에 해당하는 데이터를 변환할 수 있다.
+
+```javascript
+function responseToRows(requestedFields, response, packageName) {
+  // Transform parsed data and filter for requested fields
+  return response.map(function(dailyDownload) {
+    var row = [];
+    requestedFields.asArray().forEach(function (field) {
+      switch (field.getId()) {
+        case 'day':
+          return row.push(dailyDownload.day.replace(/-/g, ''));
+        case 'downloads':
+          return row.push(dailyDownload.downloads);
+        case 'packageName':
+          return row.push(packageName);
+        default:
+          return row.push('');
+      }
+    });
+    return { values: row };
+  });
+}
+```
+
+### 3) 완성된 getData 함수
+
+다음 코드를 스크립트에 추가한다.
+
+```javascript
+function responseToRows(requestedFields, response, packageName) {
+  // Transform parsed data and filter for requested fields
+  return response.map(function(dailyDownload) {
+    var row = [];
+    requestedFields.asArray().forEach(function (field) {
+      switch (field.getId()) {
+        case 'day':
+          return row.push(dailyDownload.day.replace(/-/g, ''));
+        case 'downloads':
+          return row.push(dailyDownload.downloads);
+        case 'packageName':
+          return row.push(packageName);
+        default:
+          return row.push('');
+      }
+    });
+    return { values: row };
+  });
+}
+
+function getData(request) {
+  var requestedFieldIds = request.fields.map(function(field) {
+    return field.name;
+  });
+  var requestedFields = getFields().forIds(requestedFieldIds);
+
+  // Fetch and parse data from API
+  var url = [
+    'https://api.npmjs.org/downloads/range/',
+    request.dateRange.startDate,
+    ':',
+    request.dateRange.endDate,
+    '/',
+    request.configParams.package
+  ];
+  var response = UrlFetchApp.fetch(url.join(''));
+  var parsedResponse = JSON.parse(response).downloads;
+  var rows = responseToRows(requestedFields, parsedResponse, request.configParams.package);
+
+  return {
+    schema: requestedFields.build(),
+    rows: rows
+  };
+}
+```
+
+## Manifest 업데이트하기
+
+Apps Script에서 `보기 > 매니페스트 파일 표시` 를 선택하면 `appsscript.json` 파일이 생성된다.
+다음과 같이 수정하고 저장한다.
+
+```
+{
+  "dataStudio": {
+    "name": "npm Downloads - From Codelab",
+    "logoUrl": "https://raw.githubusercontent.com/npm/logos/master/%22npm%22%20lockup/npm-logo-simplifed-with-white-space.png",
+    "company": "Codelab user",
+    "companyUrl": "https://developers.google.com/datastudio/",
+    "addonUrl": "https://github.com/google/datastudio/tree/master/community-connectors/npm-downloads",
+    "supportUrl": "https://github.com/google/datastudio/issues",
+    "description": "Get npm package download counts.",
+    "sources": ["npm"]
+  }
+}
+```
+
+## 컨넥터를 데이터스튜디오에서 테스트해보기
+
+### 배포하기
+
+1. `게시 > 매니페스트에서 배포` 를 선택한다
+2. `Get ID` 왼쪽에 있는 데이터스튜디오 로고를 클릭하면 컨넥터 링크가 생성된다
+3. 컨넥터 링크를 클릭하면 새로운 데이터스튜디오 화면이 뜬다
+
+### 컨넥터 인증하기
+
+다음과 같은 문구가 뜬다. "승인" 버튼을 누른다.
+
+> 데이터 스튜디오에서 이 커뮤니티 커넥터를 사용하려면 승인이 필요합니다.
+
+# 참고
+
+위에서 정리한 코드들이 생각보다 많이 outdated 된 것 같다. 아래 문서 참고해서 다시 정리해보자..
+
+https://developers.google.com/datastudio/connector/build
