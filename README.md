@@ -98,3 +98,72 @@
     - [R: rstan에서 cpp_object_initializer 에러 해결하기](https://github.com/lumiamitie/TIL/blob/master/rstudy/stan_cpp_object_initializer_error.md)
 - ETC
     - [Lambda Calculus](https://github.com/lumiamitie/TIL/blob/master/dev/lambda_calculus.md)
+
+## 시즌3 (2019-03-18 ~ 2019-06-25)
+
+출석률 71%
+
+### Data Science
+
+#### Causal Inference
+
+- Causal Inference in Statistics : A primer
+    - [Ch1. Preliminaries](https://github.com/lumiamitie/TIL/blob/master/ds/causal_inference_primer/ch1_preliminaries.md)
+    - [Ch2. Graphical Models and their applications](https://github.com/lumiamitie/TIL/blob/master/ds/causal_inference_primer/ch2_graphical_models.md)
+- Introduction to the Causal Inference
+    - [01. Introduction](https://github.com/lumiamitie/TIL/blob/master/ds/intro_to_causal_inference/01_introduction.md)
+    - [02. Experiments](https://github.com/lumiamitie/TIL/blob/master/ds/intro_to_causal_inference/02_experiments.md)
+- [Berksons Paradox](https://github.com/lumiamitie/TIL/blob/master/ds/perksons_paradox.md)
+- Causal Inference with Python
+    - [Part 1. Potential Outcomes](https://github.com/lumiamitie/TIL/blob/master/python/causal_inference/ci_in_py_part1.md)
+    - [Part 2. Causal Graphical Models](https://github.com/lumiamitie/TIL/blob/master/python/causal_inference/ci_in_py_part2.md)
+
+#### Statistics
+
+- **Bayesian**
+    - [Stan: lp__와 target이 의미하는 것](https://github.com/lumiamitie/TIL/blob/master/bayesian/stan/lp__and_target.md)
+    - [Stan: Beginners Exercise - Bayesian computation with Stan](https://github.com/lumiamitie/TIL/blob/master/bayesian/stan/stan_quiz_190410.md)
+- **Gaussian Process**
+    - [Python: Fitting Gaussian Process Models in Python](https://github.com/lumiamitie/TIL/blob/master/python/gp_in_python.md)
+    - [Python: Fitting Gaussian Process Models in PyMC3](https://github.com/lumiamitie/TIL/blob/master/python/gp_in_pymc3.md)
+- **Time Series**
+    - [R: 시계열 자료에서 주기를 추출하기](https://github.com/lumiamitie/TIL/blob/master/rstudy/extract_period.md)
+    - [R: Prophet으로 Sunspot 데이터 예측하기(수정)](https://github.com/lumiamitie/TIL/blob/master/rstudy/fb_prophet_sunspot_example.md)
+- [R: Moderndive Ch10. Hypothesis Testing](https://github.com/lumiamitie/TIL/blob/master/statistics/moderndive_ch10_hypothesis_testing.md)
+- [MLE vs MAP](https://github.com/lumiamitie/TIL/blob/master/ds/mle_vs_map.md)
+- [Why Stepwise Selection Bad?](https://github.com/lumiamitie/TIL/blob/master/statistics/why_stepwise_selection_bad.md)
+
+#### Graph Theory
+
+- **Stanford CS224w** : Analysis of Networks
+    - [01.Introduction](https://github.com/lumiamitie/TIL/blob/master/ds/graph_theory/cs224w/01_introduction.md)
+    - [03.Pagerank](https://github.com/lumiamitie/TIL/blob/master/ds/graph_theory/cs224w/03_pagerank.md)
+    - [09.Graph Representation Learning(Node2vec)](https://github.com/lumiamitie/TIL/blob/master/ds/graph_theory/cs224w/09_node2vec.md)
+- [R: Network Centrality](https://github.com/lumiamitie/TIL/blob/master/rstudy/network_centrality.md)
+- [Python: GraphFrames Installation in pyspark](https://github.com/lumiamitie/TIL/blob/master/spark/pyspark_graphframes_installation.md)
+- [Python: PyTorch-BigGraph 적용하기](https://github.com/lumiamitie/TIL/blob/master/ds/graph_theory/how_to_use_pbg.md)
+- [Connected Components](https://github.com/lumiamitie/TIL/blob/master/ds/graph_theory/connected_components.md)
+
+### Development
+
+- **Git**
+    - [Git : 마지막 커밋 변경하기](https://github.com/lumiamitie/TIL/blob/master/ds/git/git_commit_amend.md)
+    - [Git : Remote Branch 다루기](https://github.com/lumiamitie/TIL/blob/master/ds/git/remote_branch.md)
+    - [Git : 특정 파일의 수정 내역 되돌리기](https://github.com/lumiamitie/TIL/blob/master/ds/git/git_undo_modification.md)
+- **Javascript**
+    - [JS: Google Data Studio Community Connector 만들기](https://github.com/lumiamitie/TIL/blob/master/js/datastudio_connector.md)
+    - [JS: Fetch API 사용하는 방법](https://github.com/lumiamitie/TIL/blob/master/js/fetch.md)
+    - [JS: Mac 환경에 nvm 설치하기](https://github.com/lumiamitie/TIL/blob/master/js/install_nvm_in_mac.md)
+    - [JS: Vue 앱에서 인증 구현하기](https://github.com/lumiamitie/TIL/blob/master/js/vue_auth.md)
+    - [JS: Vue CLI 3](https://github.com/lumiamitie/TIL/blob/master/js/vue_cli3.md)
+    - [JS: Vue v-for 문에서 Custom Elements 사용할 때 key 없다는 에러 해결하기](https://github.com/lumiamitie/TIL/blob/master/js/vue_custom_elem_key_in_v_for.md)
+    - [JS: Vue 웹팩 빌드 후 CSS가 다르게 적용되는 문제](https://github.com/lumiamitie/TIL/blob/master/js/vue_css_differ_prod_dev.md)
+- **Visualization**
+    - [Python: Dash Tutorial 따라하기](https://github.com/lumiamitie/TIL/blob/master/python/visualize/dash_tutorial.md)
+
+### ETC
+
+- [Python: 아이패드에서 구글 번역 익스텐션 만들기](https://github.com/lumiamitie/TIL/blob/master/python/ipad_translate_extension.md)
+- [R: Rmarkdown에 이미지 임베드하고 세부 조정하기](https://github.com/lumiamitie/TIL/blob/master/rstudy/embed_images_in_rmd.md)
+- [R: R CMD BATCH에서 script에 argument 적용하기](https://github.com/lumiamitie/TIL/blob/master/rstudy/r_cmd_script_with_arg.md)
+- [R: Installing R kernel in Colaboratory Notebook](https://github.com/lumiamitie/TIL/blob/master/rstudy/r_in_colab.md)
