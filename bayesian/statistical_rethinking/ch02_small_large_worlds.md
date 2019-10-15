@@ -49,3 +49,48 @@
 첫 번째는 모형에서 확신하더라도 그 모형이 좋다는 것을 보장해주지는 못한다. 데이터가 많아질수록 모형의 변동폭이 점점 좁아지지만, 모형들은 대체로 오해의 소지가 있는 상황에서도 추론 결과에 자신감이 넘치는 경우가 많다. 모형이 알려주는 것은, 모형을 바탕으로 했을 때 값이 있음직한 범위가 좁다는 것이다. 모형이 달라지면 결과도 달라진다.
 
 두 번째는 모형의 결과를 감독하고 평가하는 것이 중요하다. 모형의 가정이 맞는지 체크하는 것이 목표가 아니다. 대신 특정한 목적에 모형이 적합한지 체크하는 것이 목적이다. 보통 모형을 처음 구성할 때 생각했던 것을 넘어서는 추가적인 질문들을 의미한다.
+
+# 2.3 Components of the model
+
+- **Variables**
+    - 서로 다른 값을 가지는 기호를 의미한다
+    - 과학적인 맥락에서는 추론하고자 하는 대상을 말한다
+    - 지구본을 던지는 예시에서는 3가지 변수가 있다
+        - 지구본에서 물이 차지하는 비율 `p` (관측할 수 없는 parameter)
+        - 지구본을 던진 결과 물이 나온 횟수 `W` 와 땅이 나온 횟수 `L`
+- **Definitions**
+    - 필요한 변수를 나열하면 각각의 변수에 대해 정의해야 한다
+    - Observed Variables
+        - p 값이 주어졌을 때, 현재 W와 L 값이 나올 가능성이 얼마나 될지 계산할 수 있다
+        - 이 값을 Likelihood 라고 하고, 관측된 값들이 가질 수 있는 확률 분포를 의미한다
+    - Unobserved Variables
+        - p값은 관측되지 않았기 때문에 이 값을 parameter라고 한다
+        - 해당 값이 존재할 만한 분포를 정의하고 이것을 Prior라고 한다
+- **Model**
+    - 관측된 변수 W와 L은 이항 분포를 따르고, p는 0과 1 사이의 균일분포를 따른다는 모형을 세울 수 있다
+
+# 2.4 Making the model go
+
+모형에서 필요한 변수를 결정하고 각각을 정의할 수 있다면, 모든 prior 확률을 업데이트할 수 있다. 이것을 Posterior 분포라고 한다. 
+
+## 2.4.1 Bayes' theorem
+
+Posterior 분포는 베이즈 정리를 통해 구할 수 있다.
+
+    Posterior = Pr(W, L | p) x Pr(p) / Pr(W, L)
+              = {Probability of the Data} X {Prior} / {Average probability of the data}
+    
+    여기서 Average probability of the data는
+    = prior를 기준으로 평균을 구한 값
+    = marginal likelihood
+    를 의미한다
+
+여기서 중요한 점은 posterior가 prior와 데이터가 나타날 확률을 곱한 값에 비례한다는 것이다.
+
+## 2.4.2 Motors
+
+수학적인 원리를 아는 것은 도움이 되지만, 모든 문제가 수학으로 깔끔하게 풀리지는 않는다. 따라서 다양한 방법을 동원해 근사적인 해답을 구한다. 여기서는 세 가지 방법에 대해 알아볼 것이다.
+
+1. Grid Approximation
+2. Quadratic Approximation
+3. Markov Chain Monte Carlo (MCMC)
