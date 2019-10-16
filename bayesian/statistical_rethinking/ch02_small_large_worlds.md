@@ -94,3 +94,45 @@ Posterior 분포는 베이즈 정리를 통해 구할 수 있다.
 1. Grid Approximation
 2. Quadratic Approximation
 3. Markov Chain Monte Carlo (MCMC)
+
+## 2.4.3 Grid Approximation
+
+가장 단순한 방법 중 하나는 바로 Grid Approximation 이다. 대부분의 파라미터는 연속적이기 때문에 무한대의 값을 가질 수 있다. 하지만 여기서 유한한 수의 값만 고려하는 방식으로 연속적인 posterior 분포를 근사할 수 있다. 이 방식은 직관적이기 때문에 이해하는데 도움을 주시만, 실제 모델링 과정에 사용하기에는 실용적이지 않다. 파라미터 수가 늘어날수록 계산량이 급격하게 늘어나기 때문이다. 하지만 지구본 던지기 예제에서는 다음과 같은 방식으로 문제없이 동작한다.
+
+1. **그리드를 정의한다** : Posterior를 예측하기 위해 몇 개의 점을 사용할지 정해야 한다
+2. 그리드 위의 각 파라미터에 대해 **Prior를 구한다**
+3. 각 파라미터 값에서 **Likelihood를 계산한다**
+4. 각 파라미터에 대해 **Posterior를 구한다** : Prior와 Likelihood를 곱한다
+5. **Posterior를 정규화(standarized)** 한다 :  각 값을 전체의 합으로 나눈다
+
+지구본 던지기 예제에서 각 과정을 R 코드를 통해 살펴보자.
+
+```r
+# Grid를 정의한다
+p_grid <- seq(from = 0, to = 1, length.out = 20)
+
+# Prior를 정의한다
+prior <- rep(1, 20)
+
+# 그리드의 각 값에서 Likelihood를 계산한다
+likelihood <- dbinom(x = 6, size = 9, prob = p_grid)
+
+# Likelihood와 Prior의 곱을 계산한다
+unstd_posterior <- likelihood * prior
+
+# Posterior 분포의 합이 1이 되도록 조정한다
+posterior <- unstd_posterior / sum(unstd_posterior)
+```
+
+그리드의 점을 각각 5개, 20개로 했을 때 posterior 분포를 그래프로 그려보자. 점의 개수가 많을수록 정확도가 높아진다. 하지만 점을 10만개 정도 찍어도 처음 100개를 찍어보았을 때와 비교했을 때 엄청난 차이가 느껴지지는 않을 것이다.
+
+![png](fig/ch2_grid_approx_01.png)
+
+이번에는 다른 Prior를 적용해보자. Prior를 제외한 코드는 동일하다.
+
+```r
+prior <- ifelse(p_grid < 0.5, 0, 1)
+prior <- exp(-5 * abs(p_grid - 0.5))
+```
+
+![png](fig/ch2_grid_approx_02.png)
