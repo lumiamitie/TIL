@@ -69,4 +69,92 @@ error_i ~ N(0,1)
 SALES = r0 + r1*MKT + r2*VISITS + r3*COMP + error
 ```
 
-mkt와 sales 사이의 PDP는 다음과 같다.
+R을 사용해서 시뮬레이션 값을 구하고, mkt와 sales 사이의 PDP를 계산해 그래프로 표현해보자.
+
+```r
+library(tidyverse)
+
+# 각 변수들의 값을 생성한다
+comp <- rnorm(10000, sd = 1)
+mkt <- 0.6 * comp + rnorm(10000, sd = 1)
+visits <- 0.5 * mkt + rnorm(10000, sd = 1)
+sales <- 0.3 * visits - 0.9 * comp + rnorm(10000, sd = 1)
+
+# 실제 데이터와 유사한 형태로 스케일을 조정한다
+sim_data <- tibble(
+  mkt = (mkt - min(mkt)) * 100,
+  visits = floor((visits - min(visits)) * 1000),
+  sales = floor((sales - min(sales)) * 100),
+  comp = comp - min(comp)
+)
+
+# 생성한 데이터중 일부를 가지고 선형 회귀 모형을 구성한다
+model <- lm(sales ~ ., data = sim_data[1:8000,])
+
+# mkt 구간을 10개로 나눈다
+mkt_vals <- seq(min(sim_data$mkt), max(sim_data$mkt), length.out = 10)
+
+# 주어진 mkt 값에 대해서 dependence를 계산하는 함수를 구성한다
+estimate_dependence <- function(model_obj, newdata, mkt_value) { 
+  mean(predict(model_obj, newdata = newdata %>% mutate(mkt = mkt_value)))
+}
+
+# 구간별 dependence값을 계산한다
+dependence <- mkt_vals %>% 
+  map_dbl(partial(estimate_dependence, model_obj = model, newdata = sim_data))
+
+# mkt 값별 dependence 값을 데이터프레임으로 구성한다
+mkt_dp <- tibble(
+  mkt_values = mkt_vals,
+  dependence = dependence
+)
+
+# mkt 값별로 dependence 값을 그래프로 표현한다
+ggplot(mkt_dp, aes(x = mkt_values, y = dependence)) +
+  geom_line() +
+  ylim(min(sim_data$sales), max(sim_data$sales)) +
+  ggtitle('Partial Dependence') +
+  theme_light()
+```
+
+![](fig/fig_analyze_effect_x_on_y_01.png)
+
+선이 거의 평평한 것을 보아 효과가 거의 없다고 해석할 수 있다. 하지만 실제로 이 직선의 기울이는 `beta1 * beta3 = 0.15` 가 되어야 한다.
+
+Sales 변수의 예측값과 실제값을 비교해보면 모형이 완벽하지는 않지만 데이터를 상당히 잘 설명하고 있는 것을 볼 수 있다. 그런데도 PDP는 생각했던 것과 다른 결과가 나오는 것을 볼 수 있다.
+
+```r
+# sales의 실제값과 예측값을 데이터프레임으로 구성한다
+sales_compare <- tibble(
+  actual = sim_data[8001:10000,] %>% pull(sales),
+  predicted = predict(model, sim_data[8001:10000,])
+)
+
+# 모형의 R-Squared 값을 계산한다
+sales_r2 <- with(sales_compare, {
+  round(1 - var(predicted - actual) / var(actual), 2)
+})
+
+# Sales의 실제값과 예측값을 그래프로 비교한다
+ggplot(sales_compare, aes(x = actual, y = predicted)) + 
+  geom_point(alpha = 0.3) + 
+  geom_abline(intercept = 0, slope = 1, color = 'orange', size = 1, alpha = 0.5) +
+  annotate('text', 
+           x = quantile(sim_data$mkt, 0.01), 
+           y = quantile(sim_data$sales, 0.9), 
+           label = paste0('R2 = ', sales_r2), size = 5) + 
+  labs(x = 'Actual Sales', y = 'Predicted Sales') +
+  theme_light()
+```
+
+![](fig/fig_analyze_effect_x_on_y_02.png)
+
+
+## The "do" operator
+
+변수간의 관계가 실제와는 다르게 계산된 이유는, **"X가 Y에 어떻게 영향을 미치는가?" 라는 질문이 잘못 정의되었고** 그에 따라 도구를 선택했기 때문이다. 
+
+우리는 다음 두 가지를 구분해서 이해해야 한다.
+
+- `X = x` : X라는 변수가 x 값을 갖는 것을 관찰한다
+- `do(X = x)` : X변수가 x라는 값을 갖도록 강제한다
