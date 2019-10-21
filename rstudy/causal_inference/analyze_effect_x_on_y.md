@@ -158,3 +158,105 @@ ggplot(sales_compare, aes(x = actual, y = predicted)) +
 
 - `X = x` : X라는 변수가 x 값을 갖는 것을 관찰한다
 - `do(X = x)` : X변수가 x라는 값을 갖도록 강제한다
+
+X를 관찰하는 것과 X값을 결정하는 것의 차이를 이해하기 위해, 샘플링 결과가 어떻게 바뀌는지 살펴보자. 
+앞에서 살펴본 예제에서 `do(mkt = x)` 는 mkt를 결정하는 공식이 더이상 comp 변수의 함수가 아니라는 것을 의미한다.
+
+```
+#### Before ####
+SALES  = beta1 * VISITS + beta2 * COMP + error1
+VISITS = beta3 * MKT   + error2
+MKT    = beta4 * COMP  + error3
+COMP   = error4
+
+#### After : do(mkt = x) ####
+SALES  = beta1 * VISITS + beta2 * COMP + error1
+VISITS = beta3 * MKT   + error2
+MKT    = x
+COMP   = error4
+```
+
+두 가지 다른 DGP에 따라 생성된 데이터를 가지고 mkt와 sales 변수의 산점도를 그려서 비교해보자.
+
+```r
+# Random Seed
+set.seed(123)
+
+# mkt 값을 변경하고, 변수 간의 관계에 따라 데이터를 새로 생성한다
+mkt <- sim_data %>% slice(sample.int(10000, replace = T)) %>% pull(mkt) / 100
+visits <- 0.5 * mkt + rnorm(10000, sd = 1)
+comp <- rnorm(10000, sd = 1)
+sales <- 0.3 * visits - 0.9 * comp + rnorm(10000, sd = 1)
+
+# 새롭게 생성한 데이터의 스케일을 조정하고 데이터프레임으로 구성한다
+sim_data2 <- tibble(
+    mkt = (mkt - min(mkt)) * 100,
+    visits = floor((visits - min(visits)) * 1000),
+    sales = floor((sales - min(sales)) * 100),
+    comp = comp - min(comp)
+)
+
+# 두 시뮬레이션 결과를 하나의 데이터 프레임으로 묶는다
+sim_data_total = bind_rows(
+    sim_data %>% mutate(DGP = 'MKT = x'),
+    sim_data2 %>% mutate(DGP = 'do(MKT = x)')
+) %>% 
+    mutate(DGP = factor(DGP, levels = c('MKT = x', 'do(MKT = x)')))
+
+# 두 DGP를 비교하는 산점도를 그린다
+ggplot(sim_data_total, aes(x = mkt, y = sales)) +
+    geom_point(alpha = 0.1) +
+    geom_smooth(method = 'lm', color = 'orange', size = 2, se = FALSE) +
+    facet_wrap(vars(DGP)) +
+    theme_minimal(base_size = 20)
+```
+
+![](fig/fig_analyze_effect_x_on_y_03.png)
+
+그래프를 보면 mkt와 sales의 joint distribution이 상당히 달라졌다는 것을 알 수 있다. 
+`mkt = x` 를 관측했을 때는 마케팅을 많이 할수록 매출이 줄어드는 것처럼 보인다. 
+`do(mkt = x)` 을 보면 mkt가 증가할수록 sales도 같이 증가하는 경향이 나타난다. 
+이 때의 기울기는 0.15 다. (실제 인과 효과값과 동일하다)
+
+```r
+# do(MKT = x) 의 경우, 기울기가 실제 값인 0.15에 근접하게 구해진다
+coef(lm(sales ~ mkt, data = sim_data2))
+# (Intercept)         mkt 
+# 466.4298341   0.1600607
+```
+
+## The challenge with Causal inference
+
+Causal inference 에서는 X을 설정하 다른 모든 feature Z가 z값을 가질 때, 기대되는 결과 Y값을 예측하고자 한다.
+
+```
+E(Y | do(X=x), Z=z)
+```
+
+X의 Y에 대한 인과적인 영향은 다음과 같을 것이다.
+
+```
+E(Y | do(X=x)) = E_z(Y | do(X=x), Z=z)
+````
+
+Causal inference가 어려운 이유는 다음과 같다.
+
+- `E(Y | do(X=x))` 는 `do(mkt = x)` 를 통해 구한 DGP를 통해 생성되지만, 우리가 관찰할 수 있는 것은 관측치를 바탕으로 한 DGP 뿐이다
+- 특정한 분포를 다른 분포를 통해 예측해야 한다 (일반적인 ML 문제와 다르다)
+
+## There's still hope
+
+`E(Y | do(X=x))` 에 대한 편향되지 않은 예측을 할 수 있는 방법이 있다. 
+Z에 속하는 변수들 중에서 **Backdoor Criteria** (Adjustment set 이라고도 한다) 를 만족하는 변수들을 측정할 수 있을 때 가능하다. 
+X변수에서 목표 변수 Y로 이어지는 path는 흐르지만, 모든 "spurious" path는 차단하고 있는 상황을 말한다.
+
+이 경우에는 Zb 를 측정할 수 있다면 g-computation 공식을 사용할 수 있다.
+
+```
+E(Y | do(X=x)) = SUM_{Z_b}( f(x, Z_b) * P(Z_b) )
+
+- 여기서 Z_b는 Z 변수들 중에서 Backdoor Criteria를 만족시키는 변수를 말한다
+- P(Z_b) 를 예측할 필요가 없기 때문에, 샘플을 통해 아래와 같이 예측할 수 있다
+
+E(Y | do(X=x)) = SUM( f(x, Z_bi) )
+```
