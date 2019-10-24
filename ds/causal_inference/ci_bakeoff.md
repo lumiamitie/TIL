@@ -111,3 +111,24 @@ E_hat(ROI | do(untreated))
 
 ATE_hat = 0.5%
 ```
+
+## CATE : Conditional Average Treatment Effect
+
+맨 처음 제시된 테이블을 보면 자동 입찰 알고리즘을 사용할 경우 ROI가 평균적으로 0.5% 상승하는 반면, 
+작은 회사들에 대해서는 1% 상승시켰고 큰 회사들에서는 ROI가 개선되지 않았다는 것을 알 수 있다. 
+
+Z 변수(이번 예제의 Company Size 변수)에 대한 조건부 효과를 **"Conditional Average Treatment Effect"** (CATE) 라고 한다. 
+Binary의 경우 CATE는 다음과 같이 정의할 수 있다.
+
+```
+CATE(z) := E(Y | do(1), z) - E(Y | do(0), z)
+```
+
+앞서 살펴본 두 모형에 대해 실제 CATE와 예측값을 비교해보자. (괄호 안은 절대 오차를 나타낸다)
+
+| Company Size | CATE (true, unknown) | CATE (model1) | CATE (model2) |
+|--------------|----------------------|---------------|---------------|
+| Small        | 1%                   | 0% (1%)       | 1% (0%)       |
+| Large        | 0%                   | -1% (1%)      | 0% (0%)       |
+
+`E(Y)` 를 더 정확하게 예측했던 model1은 이번에도 실제 CATE를 예측하는데 실패했다. 반면 model2는 정확하게 예측했다.
