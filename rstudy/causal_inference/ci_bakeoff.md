@@ -132,3 +132,67 @@ CATE(z) := E(Y | do(1), z) - E(Y | do(0), z)
 | Large        | 0%                   | -1% (1%)      | 0% (0%)       |
 
 `E(Y)` 를 더 정확하게 예측했던 model1은 이번에도 실제 CATE를 예측하는데 실패했다. 반면 model2는 정확하게 예측했다.
+
+## An example with simulated data
+
+100개의 데이터를 생성해서 의사결정 트리를 통해 학습시켰다. 그런데 학습결과를 보니 트리가 자동 알고리즘 적용 여부 (Treatment)를 완전히 무시했다.
+
+    0.034 (100%)
+    ㄴ Company_size = Small -> 0.046 (56%)
+    ㄴ Company_size = Large -> 0.019 (44%)
+
+왜 그런 일이 발생했는지 알아보기 위해 데이터의 분포를 확인해보자.
+
+```R
+library(tidyverse)
+
+# Random Seed 설정
+set.seed(123)
+
+# 샘플링 과정에 공통적으로 사용할 표준편차 파라미터
+sample_sd <- 0.01
+
+# 주어진 비율에 맞게 그룹 샘플링 
+sampled_group <- sample(
+    x = c('untreated, small', 'treated, small', 'untreated, large', 'treated, large'),
+    size = 100,
+    replace = TRUE, 
+    prob = c(0.1, 0.4, 0.4, 0.1)
+)
+
+# 샘플링된 그룹 정보에 따라 ROI 값을 시뮬레이션
+ROI <- case_when(
+    sampled_group == 'untreated, small' ~ rnorm(1, mean = 0.01, sd = sample_sd),
+    sampled_group == 'treated, small'   ~ rnorm(1, mean = 0.02, sd = sample_sd),
+    sampled_group == 'untreated, large' ~ rnorm(1, mean = 0.05, sd = sample_sd),
+    sampled_group == 'treated, large'   ~ rnorm(1, mean = 0.05, sd = sample_sd),
+)
+
+# 시뮬레이션 결과를 테이블로 정리
+sim_data <- tibble(
+    treatment = factor(gsub(',.+', '', sampled_group), levels = c('untreated', 'treated')), 
+    company_size = factor(gsub('.+, ', '', sampled_group), levels = c('small', 'large')), 
+    ROI = ROI
+)
+
+# 그룹별 ROI 분포를 시각화
+ggplot(sim_data, aes(x = company_size, y = ROI, color = treatment)) + 
+    geom_point(position = position_jitterdodge(dodge.width = 0.5, jitter.height = 0.002),
+                size = 2) + 
+    xlab('Company Size') + 
+    scale_color_brewer(palette = 'Paired') +
+    scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+    theme_light()
+```
+
+![](fig/fig_ci_bakeoff_01.png)
+
+위 데이터를 보면 인과 추론 문제를 일반적인 ML 문제로 풀었을 때 문제가 될 수 있는 부분들이 존재한다.
+
+1. 다른 요인들에 비해서 Treatment에 의한 변동성이 작아서 **Treatment에 의한 효과를 과소평가할 우려**가 있다
+    - 여기서는 Company Size에 의한 변동성이 더 크기 때문에, 의사결정 트리를 학습하면 Treatment에 따른 차이를 무시해버린다
+2. Treatment에 따른 **분포가 한 쪽으로 크게 쏠려있다**
+    - 작은 회사에서는 treatment 대상인 회사들이 많고, 큰 회사에서는 거의 없다
+    - 같은 규모의 회사끼리 비교하기 어려워져서 CATE를 예측하기 힘들어진다
+
+더 강력한 ML 알고리즘과 CI 문제를 풀기 위한 알고리즘을 적용해보고 결과를 비교해보자.
