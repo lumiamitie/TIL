@@ -136,3 +136,71 @@ prior <- exp(-5 * abs(p_grid - 0.5))
 ```
 
 ![png](fig/ch2_grid_approx_02.png)
+
+## 2.4.4 Quadratic Approximation
+
+모형의 파라미터 수가 많아질수록 고려해야 하는 그리드 수는 급격하게 증가한다. 그렇기 때문에 그리드를 사용한 근사는 복잡한 모형에 대응하기 어렵다. 이러한 상황에서는, 조건이 많이 필요하지만 Quadratic Approximation 이  유용할 수 있다. 특정한 조건을 만족하는 경우 Posterior 분포에서 가장 높은 부분을 중심으로 정규분포와 비슷한 형태를 따른다. 정규분포는 그 중심(평균)과 퍼진 정도(분산) 라는 두 가지 파라미터만으로 설명할 수 있기 때문에 편리하다. 
+
+정규분포를 사용한 근사 (Gaussian approximation)를 다른 말로 **"Quadratic Approximation"** 이라고 한다. 정규분포에 로그를 취할 경우 이차 함수(Quadratic Function)인 포물선을 그리기 때문이다. 따라서 이러한 근사법은 모든 포물선 형태의 log-posteior를 포함한다.
+
+크게 두 가지 단계를 통해 적용할 수 있다.
+
+1. 다양한 최적화 기법을 통해 Posterior의 mode를 찾는다
+2. Posterior의 최고점을 찾으면, 해당 지점 주위의 굴곡을 계산한다
+
+`rethinking` 라이브러리의 `quap` 함수를 사용해 적용해보자. 다양한 회귀 모형들에 적용할 수 있는 유연한 도구다. 지구본 던지기 데이터를 사용해 계산해보자.
+
+```R
+# "rethinking" 라이브러리를 설치하기 위한 디펜던시 설치
+install.packages(c("coda","mvtnorm","devtools","loo"))
+
+# quap 등 일부 함수를 사용하기 위해서는 Experimental 버전을 설치해야 함
+devtools::install_github("rmcelreath/rethinking", ref = "Experimental")
+
+# 필요한 라이브러리 로딩
+library(tidyverse)
+library(rethinking)
+
+# Quadratic Approximation 적용
+globe_qa <- quap(
+    alist(
+        W ~ dbinom(W + L, p),  # Likelihood : binomial
+        p ~ dunif(0, 1)        # Prior      : uniform
+    ), 
+    data = list(W = 6, L = 3) 
+)
+
+# Quadratic approximate posterior distribution
+# 
+# Formula:
+#   W ~ dbinom(W + L, p)
+#   p ~ dunif(0, 1)
+# 
+# Posterior means:
+#   p 
+#   0.6666686 
+# 
+# Log-likelihood: -1.3
+
+# Quadratic Approximation의 결과에 대한 요약
+# -> "Posterior가 Gaussian이라면, 0.67일 때 최대가 되고 표준 편차는 0.16이다"
+precis(globe_qa)
+#     mean   sd 5.5% 94.5%
+#   p 0.67 0.16 0.42  0.92
+```
+
+우리는 실제 Posterior를 알고 있기 때문에 추정치가 얼마나 정확한지 계산해 볼 수 있다. 
+아래 그래프에서 실선은 실제 Posterior를 나타내고, 점선은 Quadratic Approximation 결과물이다. 
+데이터의 양이 많아질수록 추정 결과가 정확해진다. 
+
+![](fig/ch2_quad_approx_01.png)
+
+## 2.4.5 Markov chain Monte Carlo
+
+다층 모형처럼 몇 가지 중요한 모형에는 Grid, Quadratic Approximation 모두 잘 동작하지 않을 수 있다. 
+그런 모형들은 수백-수만 개의 파라미터가 존재할 가능성이 높다. 
+이러한 문제를 해결하기 위한 다양한 기법들이 존재하는데, 그 중에서 가장 유명한 것은 바로 Markov Chain Monte Carlo (MCMC) 기법이다. 
+
+MCMC 보다 직관적이지 않은 방법을 사용한다. 
+Posterior 분포를 직접 유추하는 것이 아니라 Posterior로부터 샘플을 뽑기만 한다. 
+최종적으로 샘플링한 파라미터의 분포를 가지고 Posterior를 예측하게 된다.
