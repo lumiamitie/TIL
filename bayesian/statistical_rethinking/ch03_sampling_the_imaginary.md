@@ -160,3 +160,40 @@ Posterior 분포가 한 쪽으로 크게 쏠려있을 때는 차이가 발생한
 그리고 HPDI는 계산량이 훨씬 많고 시뮬레이션에 의한 편향 (Posterior로부터 샘플을 어떻게 뽑느냐에 따라 결과가 변할 수 있다) 이 발생하기 쉽다는 단점이 있다. 
 
 그리고 만약에 어떤 구간을 사용하는지에 따라 해석이 달라질 여지가 있다면, 그냥 전체 Posterior 분포를 그래프로 나타내는 것이 더 나을 수도 있다.
+
+## 3.2.3 Point Estimates
+
+세 번째 Posterior 요약 작업은 특정한 하나의 값으로 요약 추정하는 것이다. 전체 Posterior 분포를 어떤 값으로 요약할 것인가? 
+분포를 하나의 값으로 요약하면서 정보를 잃게 될 수도 있다. 이런 작업이 필요한걸까?
+
+하지만 하나의 값으로 요약해야 한다면, 몇 가지 주의해야 할 것이 있다. 지구본 던지기 예제에서 3번 던졌을 때 3번 다 바다가 나오는 상황을 생각해보자. 
+
+```r
+p_grid <- seq(from = 0, to = 1, length.out = 1000)
+prior <- rep(1, 1000)
+
+set.seed(123)
+likelihood <- dbinom(x = 3, size = 3, prob = p_grid)
+
+unstd_posterior <- likelihood * prior
+posterior <- unstd_posterior / sum(unstd_posterior)  
+
+#### MAP ####
+p_grid[which.max(posterior)]
+# 1
+```
+
+이번에는 Posterior를 샘플링해서 결과를 살펴보자.
+
+```r
+# Samling 결과를 바탕으로 점추정
+samples = sample(p_grid, prob = posterior, size = 10000, replace = TRUE)
+
+chainmode(samples, adj = 0.01) # MAP    = 0.9898463
+mean(samples)                  # mean   = 0.798269
+median(samples)                # median = 0.8368368
+```
+
+동일한 Posterior를 요약하는 세 가지 지표 (MAP, mean, median) 가 상당히 다르다는 것을 볼 수 있다. 이 중에서 어떤 값을 선택해야 할까?
+
+한 가지 방법은 Loss Function을 선택하는 것이다.
