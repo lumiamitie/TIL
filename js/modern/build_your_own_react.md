@@ -30,8 +30,8 @@ const element = React.createElement(
 const element = {
     type: "h1",        // document.createElement 에서 사용할 태그명을 의미한다
     props: {
-    title: "foo",
-    children: "Hello", // 여기서는 문자열이지만 자식 노드가 많아지면 배열을 사용한다
+        title: "foo",
+        children: "Hello", // 여기서는 문자열이지만 자식 노드가 많아지면 배열을 사용한다
     }
 }
 ```
@@ -65,8 +65,8 @@ ReactDOM.render(element, container)
 const element = {
     type: "h1",
     props: {
-    title: "foo",
-    children: "Hello",
+        title: "foo",
+        children: "Hello",
     }
 }
 
