@@ -196,3 +196,106 @@ const element = (
 const container = document.getElementById("root")
 ReactDOM.render(element, container)
 ```
+
+## Step 2: The "render" Function
+
+`ReactDOM.render` 함수를 다시 작성해보자. 우선 DOM을 추가하는 것에만 집중해보자.
+
+여기까지 하면 JSX를 DOM으로 렌더링할 수 있게 된다.
+
+```javascript
+function render(element, container) {
+    // type 값을 통해 엘리먼트를 생성한다
+    // - 이 때, text element인지 여부에 따라 다른 엘리먼트를 생성한다
+    const dom = element.type == "TEXT_ELEMENT"
+        ? document.createTextNode("")
+        : document.createElement(element.type)
+
+    // 엘리먼트의 props 항목을 노드에 추가한다
+    const isProperty = key => key !== "children"
+    Object.keys(element.props)
+    .filter(isProperty)
+    .forEach(name => {
+        dom[name] = element.props[name]
+    })
+
+    // 자식 노드가 있다면 재귀적으로 엘리먼트를 생성한다
+    element.props.children.forEach(child =>
+    render(child, dom)
+    )
+​
+    // 생성한 노드를 컨테이너에 추가한다
+    container.appendChild(dom)
+}
+
+// Didact에 render 함수를 추가한다
+const Didact = {
+    createElement,
+    render,
+}
+​
+/** @jsx Didact.createElement */
+const element = (
+    <div id="foo">
+    <a>bar</a>
+    <b />
+    </div>
+)
+
+// 루트 컨테이너를 생성하고 렌더링한다
+const container = document.getElementById("root")
+Didact.render(element, container)
+```
+
+## Step 3: Concurrent Mode
+
+작업을 더 진행하기 전에 리팩토링을 해보자.  `render` 함수의 재귀 부분에는 문제가 있다.
+
+일단 렌더링 작업을 시작하면, 엘리먼트 트리를 전부 렌더링하기 전에는 작업을 멈출 수 없다. 
+따라서 트리가 커져서 작업 속도가 너무 길어지면 메인 스레드가 멈출 우려가 있다. 
+사용자 입력을 받거나 애니메이션을 처리하는 등 중요한 작업을 수행해야 할 때도 렌더링이 끝나기를 기다려야 한다. 
+
+```javascript
+function render(element, container) {
+    ...
+
+    // 재귀 로직에서 성능상 문제가 발생할 수 있다
+    element.props.children.forEach(child =>
+    render(child, dom)
+    )
+
+    ...
+}
+```
+
+따라서 이러한 문제를 해결하기 위해, 작업을 작은 단위로 쪼갠다. 
+각각의 작은 작업을 마치면 브라우저가 중간에 끼어들어서 필요한 작업을 수행할 수 있도록 한다. 
+이를 위해 `requestIdleCallback` 함수를 사용한다. 
+`setTimeout` 과 비슷하지만, 실행시점을 직접 입력하는 대신 **메인 스레드가 유휴 상태가 될 때 콜백 함수를 실행시킨다.**
+(현재 리액트는 `requestIdleCallback` 대신 scheduler 패키지를 사용한다.)
+
+```javascript
+let nextUnitOfWork = null
+​
+function workLoop(deadline) {
+    let shouldYield = false
+    while (nextUnitOfWork && !shouldYield) {
+    // 반복문이 시작되면 처음으로 해야 할 일을 설정해주어야 한다
+    // - 아직은 performUnitOfWork 함수가 구현되지 않았다
+    // - performUnitOfWork 함수는 현재 주어진 작업을 수행하고, 다음 해야 할 작업을 반환한다
+    nextUnitOfWork = performUnitOfWork(
+        nextUnitOfWork
+    )
+    // deadline 파라미터를 통해 브라우저가 권한을 가져가려면 시간이 얼마나 남았는지 알 수 있다
+    shouldYield = deadline.timeRemaining() < 1
+    }
+    requestIdleCallback(workLoop)
+}
+​
+requestIdleCallback(workLoop)
+
+// 현재 주어진 작업을 수행하고, 다음 해야 할 작업을 반환한다
+function performUnitOfWork(nextUnitOfWork) {
+    // TODO
+}
+```
