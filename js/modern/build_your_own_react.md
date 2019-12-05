@@ -214,14 +214,14 @@ function render(element, container) {
     // 엘리먼트의 props 항목을 노드에 추가한다
     const isProperty = key => key !== "children"
     Object.keys(element.props)
-    .filter(isProperty)
-    .forEach(name => {
-        dom[name] = element.props[name]
-    })
+        .filter(isProperty)
+        .forEach(name => {
+            dom[name] = element.props[name]
+        })
 
     // 자식 노드가 있다면 재귀적으로 엘리먼트를 생성한다
     element.props.children.forEach(child =>
-    render(child, dom)
+        render(child, dom)
     )
 ​
     // 생성한 노드를 컨테이너에 추가한다
@@ -237,8 +237,8 @@ const Didact = {
 /** @jsx Didact.createElement */
 const element = (
     <div id="foo">
-    <a>bar</a>
-    <b />
+        <a>bar</a>
+        <b />
     </div>
 )
 
@@ -261,7 +261,7 @@ function render(element, container) {
 
     // 재귀 로직에서 성능상 문제가 발생할 수 있다
     element.props.children.forEach(child =>
-    render(child, dom)
+        render(child, dom)
     )
 
     ...
@@ -280,14 +280,14 @@ let nextUnitOfWork = null
 function workLoop(deadline) {
     let shouldYield = false
     while (nextUnitOfWork && !shouldYield) {
-    // 반복문이 시작되면 처음으로 해야 할 일을 설정해주어야 한다
-    // - 아직은 performUnitOfWork 함수가 구현되지 않았다
-    // - performUnitOfWork 함수는 현재 주어진 작업을 수행하고, 다음 해야 할 작업을 반환한다
-    nextUnitOfWork = performUnitOfWork(
-        nextUnitOfWork
-    )
-    // deadline 파라미터를 통해 브라우저가 권한을 가져가려면 시간이 얼마나 남았는지 알 수 있다
-    shouldYield = deadline.timeRemaining() < 1
+        // 반복문이 시작되면 처음으로 해야 할 일을 설정해주어야 한다
+        // - 아직은 performUnitOfWork 함수가 구현되지 않았다
+        // - performUnitOfWork 함수는 현재 주어진 작업을 수행하고, 다음 해야 할 작업을 반환한다
+        nextUnitOfWork = performUnitOfWork(
+            nextUnitOfWork
+        )
+        // deadline 파라미터를 통해 브라우저가 권한을 가져가려면 시간이 얼마나 남았는지 알 수 있다
+        shouldYield = deadline.timeRemaining() < 1
     }
     requestIdleCallback(workLoop)
 }
