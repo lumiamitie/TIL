@@ -299,3 +299,140 @@ function performUnitOfWork(nextUnitOfWork) {
     // TODO
 }
 ```
+
+## Step 4: Fibers
+
+작업 단위를 구성하기 위해 **Fiber Tree** 라는 새로운 자료 구조를 만들어보자. 각 엘리먼트는 하나의 fiber를 가지고, 각각의 fiber는 작업 단위가 된다.
+
+다음과 같은 상황을 생각해보자.
+
+```javascript
+Didact.render(
+    <div>
+        <h1>
+            <p />
+            <a />
+        </h1>
+        <h2 />
+    </div>,
+    container
+)
+```
+
+`render` 함수에서 root fiber를 만들고, `nextUnitOfWork` 로 설정한다. 
+나머지 작업은 performUnitOfWork 함수에서 이루어지는데, 각각의 fiber에 대해 다음과 같이 세 가지 작업을 수행한다.
+
+1. DOM에 엘리먼트를 추가한다
+2. 엘리먼트의 자식 노드를 위한 fiber를 생성한다
+3. 다음 작업 단위를 선택한다
+
+새로운 자료 구조를 사용하는 이유는 다음 작업 범위가 어디인지 쉽게 찾기 위해서다. 따라서 fiber는 각 엘리먼트의 자식 노드, 자식 노드의 형제 노드, 부모 노드와 연결된다.
+
+![](https://pomb.us/static/c1105e4f7fc7292d91c78caee258d20d/ac667/fiber2.png)
+
+- fiber 하나에 대한 작업이 끝났을 때, 해당 fiber의 자식 노드가 존재하면 그 엘리먼트가 다음 작업 대상이 된다
+    - 위 예제에서는 `root` 바로 밑에 있는 `<div>` 태그의 작업이 끝나면 그 자식 노드인 `<h1>` 태그가 다음 작업 대상이 된다
+- 자식 노드가 없다면 형제 노드가 다음 작업 대상이 된다
+    - `<p>` 태그에 대한 작업이 끝나면 옆에 있는 `<a>` 태그가 대상이 된다
+- 자식, 형제 노드 모두 없다면 부모 노드의 형제 노드로 이동한다
+    - `<a>` 태그의 다음 작업은 `<h2>` 가 된다 (부모 노드인 `<h1>`의 형제 노드)
+- 만약 부모 노드에 형제 노드가 없다면, 형제 노드가 존재하는 부모 노드를 찾아 `root` 까지 계속 올라간다
+- `root`에 도달했다면 `render` 함수의 작업이 모두 끝난다
+
+이 과정을 코드로 정리해보자. 기존의 render 함수대신 새로운 함수를 만들어보자.
+
+```javascript
+// (1) 기존의 render 함수는 내부 구조를 조금 변경해서 사용한다
+function createDom(fiber) {
+    const dom = fiber.type == "TEXT_ELEMENT"
+        ? document.createTextNode("")
+        : document.createElement(fiber.type)
+​
+    const isProperty = key => key !== "children"
+    Object.keys(fiber.props)
+        .filter(isProperty)
+        .forEach(name => {
+            dom[name] = fiber.props[name]
+        })
+
+    return dom
+}
+
+// (2) render 함수 안에서는 nextUnitOfWork를 fiber tree의 root 노드로 설정한다
+function render(element, container) {
+    nextUnitOfWork = {
+        dom: container,
+        props: {
+            children: [element],
+        },
+    }
+}
+​
+let nextUnitOfWork = null
+
+// (3) 브라우저가 준비되면 workLoop를 호출한다 -> root 부터 작업을 시작한다
+function workLoop(deadline) {
+    let shouldYield = false
+    while (nextUnitOfWork && !shouldYield) {
+        nextUnitOfWork = performUnitOfWork(
+            // performUnitOfWork 은 다음과 같은 작업을 수행한다
+            // 1. DOM 노드를 추가한다
+            // 2. 새로운 fiber를 생성한다
+            // 3. 다음 작업 범위를 반환한다
+            nextUnitOfWork
+        )
+        shouldYield = deadline.timeRemaining() < 1
+    }
+    requestIdleCallback(workLoop)
+}
+
+// (4) performUnitOfWork 의 세부 내용들을 구현한다
+function performUnitOfWork(fiber) {
+    // (4.1) DOM 노드를 추가한다
+    if (!fiber.dom) {
+        fiber.dom = createDom(fiber)
+    }
+​
+    if (fiber.parent) {
+        fiber.parent.dom.appendChild(fiber.dom)
+    }
+​
+    // (4.2) 새로운 fiber를 생성한다
+    const elements = fiber.props.children
+    let index = 0
+    let prevSibling = null
+    ​
+    while (index < elements.length) {
+        const element = elements[index]
+    ​
+        const newFiber = {
+            type: element.type,
+            props: element.props,
+            parent: fiber,
+            dom: null,
+        }
+        // 자식/형제 노드 구분에 따라 fiber tree에 추가한다
+        // 첫 번째 자식인지 여부를 체크하여 결정한다
+        if (index === 0) {
+            fiber.child = newFiber
+        } else {
+            prevSibling.sibling = newFiber
+        }
+        prevSibling = newFiber
+        index++
+    }
+
+    // (4.3) 다음 작업 범위를 반환한다
+    // 자식노드 -> 형제노드 -> 부모노드의 형제노드 순으로 계속 진행한다
+    if (fiber.child) {
+        return fiber.child
+    }
+    let nextFiber = fiber
+    while (nextFiber) {
+        if (nextFiber.sibling) {
+            return nextFiber.sibling
+        }
+        nextFiber = nextFiber.parent
+    }
+}
+```
