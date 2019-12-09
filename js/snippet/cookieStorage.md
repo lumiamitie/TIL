@@ -48,7 +48,7 @@ var CookieStorage = {
 
 # 참고자료
 
-- [MDN Web API : Storage](https://developer.mozilla.org/ko/docs/Web/API/Storage))
+- [MDN Web API : Storage](https://developer.mozilla.org/ko/docs/Web/API/Storage)
 - `document.cookie` 를 object 로 변환하기
     - <https://stackoverflow.com/a/50452780>
 - getter를 사용해 length 프로퍼티를 동적으로 계산
