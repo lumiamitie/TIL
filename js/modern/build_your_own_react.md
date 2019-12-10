@@ -436,3 +436,90 @@ function performUnitOfWork(fiber) {
     }
 }
 ```
+
+## Step 5: Render and Commit Phases
+
+또 한 가지 문제가 있다. 
+
+우리는 엘리먼트를 가지고 작업할 때마다 DOM에 새로운 노드를 추가한다. 
+그런데 브라우저는 DOM 렌더링 작업이 끝나기 전에 작업을 멈추고 리소스를 가져갈 수 있다. 
+그러면 사용자는 완전하지 않은 화면을 보게 될 것이다.
+
+따라서 다음과 같이 DOM을 추가하는 부분을 제거한다.
+
+```javascript
+function performUnitOfWork(fiber) {
+    if (!fiber.dom) {
+        fiber.dom = createDom(fiber)
+    }
+​
+    // 아래 부분을 제거한다
+    // if (fiber.parent) {
+    //      fiber.parent.dom.appendChild(fiber.dom)
+    // }
+​
+    ...
+}
+```
+
+그리고, fiber tree의 root (`progress root` 또는 `wipRoot` 라고 하자)를 계속 추적한다. 
+
+```javascript
+function render(element, container) {
+    wipRoot = {                  //
+        dom: container,
+        props: {
+            children: [element],
+        },
+    }
+    nextUnitOfWork = wipRoot     //
+}
+​
+let nextUnitOfWork = null
+let wipRoot = null               //
+```
+
+이제 모든 작업이 끝날 때 DOM을 변경하도록 코드를 수정한다.
+
+```javascript
+function commitRoot() {
+    // TODO
+    // -> DOM에 노드를 추가하는 역할을 한다
+}
+
+function workLoop(deadline) {
+    let shouldYield = false
+    while (nextUnitOfWork && !shouldYield) {
+        nextUnitOfWork = performUnitOfWork(
+            nextUnitOfWork
+        )
+        shouldYield = deadline.timeRemaining() < 1
+    }
+
+    // 다음 작업단위가 없으면 (모든 작업이 끝나면) fiber tree를 커밋하여 DOM을 수정한다
+    if (!nextUnitOfWork && wipRoot) {  //
+        commitRoot()                   //
+    }                                  //
+
+    requestIdleCallback(workLoop)
+}
+```
+
+`commitRoot` 함수는 재귀적으로 돌면서 DOM에 노드들을 추가한다.
+
+```javascript
+function commitRoot() {
+    commitWork(wipRoot.child)
+    wipRoot = null
+}
+​
+function commitWork(fiber) {
+    if (!fiber) {
+        return
+    }
+    const domParent = fiber.parent.dom
+    domParent.appendChild(fiber.dom)
+    commitWork(fiber.child)
+    commitWork(fiber.sibling)
+}
+```
