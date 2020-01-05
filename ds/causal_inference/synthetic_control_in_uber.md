@@ -72,3 +72,81 @@
     - 실험 시작하기 이전의 데이터로 이후의 데이터를 예측한다
     - 예측한 값과 실제 데이터의 차이로 실험의 효과를 추정한다
 - 그렇다면 어떻게 예측할 수 있을까?
+
+# The Model
+
+## How do we form our synthetics?
+
+1. **Data**
+    - Control City Data
+    - Treatment City Patterns in Previous Years
+    - Treatment City Data in Control Period
+    - Weather & Event Data
+2. **Synthetic Control Algorithm**
+3. **Synthetic "Counterfactual" City in Treatment Period**
+
+- Synthetic Model
+    - What we're trying to predict : An outcome of interest in Sao Paulo (Special cash trips for a driver)
+    - Fitting the model on data from training period (Pre-treatment period)
+        - Fit a loss function that minimize the difference between our prediction for the outcome in Sao Paulo and the outcome that we actually observe in Sao Paulo in that pre-treatment period
+
+---
+
+- 데이터
+    - 우선 실험하고자 하는 도시의 이전 데이터가 필요하다
+    - 날씨, 휴일 등 고려해야 하는 정보를 확인한다
+
+## How do we estimate treatment effect?
+
+- Estimate of the treatment effects (on any given day)
+    - = the difference between what we actually observe in Sao Paulo and what we predicted from our model in Sao Paulo
+    - using those features that we talked about earlier and the covariance that we fitted from the pre-treatment period
+    - This is about an average treatment effect (not on any particular day)
+
+# Synthetic Control Performance
+
+## It Actually works!
+
+- Using synthetic control we've been able to model some surprisingly irregular time series
+
+# Implementation At Scale
+
+## Synthetic Control at Uber scale
+
+- Precise counterfactual models
+    - We have built Spark infrastructure to **select hyperparameters that minimize our prediction bias and RMSE on a sliding window of "placebo" data** in many cities and time periods
+    - We build and test over **120000 models** (100 cities x 10 metrics x 120 days) and train parameters in a matter of minutes!
+
+# Other Synthetic Control use cases at Uber
+
+## Other Use Cases at Uber
+
+- Synthetic Control has been used at Uber for evaluating the impact of a variety of large initiatives
+    - Driver surge (탄력 요금제)
+        - Improvements to the surge pricing algorithm
+    - Uber eats
+    - UberPool (카풀)
+        - Changes to core driver-rider matching algorithm
+
+---
+
+- UberPool 에서 매칭 알고리즘을 테스트하는데 synthetic control을 사용했다
+    - 사용자가 화면으로 확인할 수 있는 변화는 아니지만, 알고리즘이 변하면 사용성에 큰 영향을 미치기 때문에 switchback을 사용할 수 없었다
+- surge pricing 알고리즘을 테스트할 때도, switchback이 종종 더 나은 성능을 보이긴 하지만 사용자가 알고리즘이 테스트 중이라는 것을 눈치채면 spillover effect가 발생할 우려가 있기 때문에 synthetic control을 사용했다
+
+# Potential Drawbacks
+
+## Limitations of Synthetic Control
+
+- Exogenous shocks can still invalidate results
+- Difficult to detect small effects
+- Can't dig into user level heterogeneous effects
+- Potential to manipulate results without strict pre-registration
+    - There is a danger of manipulating or picking results until you get something that looks reasonable
+
+# Takeaways
+
+- **Sometimes A/B Testing is not possible**, particularly in a marketplace
+- **Synthetic control** has become a popular alternative
+- **Performs well** and we have found **many use cases** at Uber
+- But be careful - like all methods, **has drawbacks**
