@@ -124,3 +124,128 @@ summary(model_did)
 
 - DD 방법론에 관심이 있다면 다음 글을 참고해보자
     - <https://www.mailman.columbia.edu/research/population-health-methods/difference-difference-estimation>
+
+## (3) CausalImpact
+
+- `CausalImpact` 는 실험군의 인과적 효과를 추정하기 위해 구글에서 만든 방법론이다.
+    - 공식문서 : [https://google.github.io/CausalImpact/CausalImpact.html](https://google.github.io/CausalImpact/CausalImpact.html)
+- DD의 다음과 같은 한계점 때문에 방법론을 만들게 되었다고 한다
+    - DD는 시간에 따라 변화하는 데이터를 사용하는데도 iid 가정(Independent and identically distributed)을 기반으로 하는 정적인 회귀 모형을 기반으로 한다
+    - 대부분의 DD 분석은 개입 이전과 이후의 두 시점만 비교하지만, 실제로 분석할 때는 효과가 처음 등장할 때부터 사라질 때까지, 시간에 따른 변화를 고려해야 한다
+- Idea
+    - 대조군의 추세를 이용해서 실험군에 treatment가 존재하지 않았을 경우(일어나지 않은 일)의 추세를 예측하려고 한다
+    - 예측한 추세(Counterfactual)와 실제 추세의 차이가 인과적 효과를 추정한 값이 된다
+    - Bayesian structural time-series models 를 사용해서 관측한 데이터의 시간에 따른 변화를 설명한다
+    - (다음에 다룰) **Synthetic Control 과 유사한 컨셉을** 가지고 있다
+- R 코드를 통해 살펴보자
+    - 모형의 결과 요약을 보면, **Absolute effect가 단위 당 -0.75** 라는 것을 볼 수 있다
+    - 테러로 인해 1인당 GDP가 0.76 unit (비율로는 8.8%) 감소했다고 해석할 수 있다
+    - DD 방법론으로 확인한 결과와 비슷한 수치가 나왔다
+
+```r
+# CausalImpact 함수가 원하는 형태로 데이터를 변환한다
+basque_ci <- basque_clean %>%
+    filter(regionname %in% c('Basque Country (Pais Vasco)', 'Cataluna')) %>% 
+    mutate(date = as.Date(glue::glue('{year}-01-01'), format = '%Y-%m-%d')) %>% 
+    select(date, regionname, gdpcap) %>% 
+    pivot_wider(names_from = regionname, values_from = gdpcap) %>% 
+    select(date, basque = `Basque Country (Pais Vasco)`, another = Cataluna)
+
+# CausalImpact 모형을 학습한다
+basque_impact <- CausalImpact::CausalImpact(
+    data = basque_ci, 
+    pre.period = as.Date(c('1955-01-01', '1975-01-01')), 
+    post.period = as.Date(c('1976-01-01', '1997-01-01'))
+)
+
+# 학습 결과를 확인한다
+summary(basque_impact)
+# Posterior inference {CausalImpact}
+# 
+#                          Average         Cumulative    
+# Actual                   7.9             173.1         
+# Prediction (s.d.)        8.6 (0.31)      189.5 (6.91)  
+# 95% CI                   [8, 9.2]        [176, 203.4]  
+#                                                        
+# Absolute effect (s.d.)   -0.75 (0.31)    -16.46 (6.91) 
+# 95% CI                   [-1.4, -0.11]   [-30.4, -2.45]
+#                                                        
+# Relative effect (s.d.)   -8.7% (3.6%)    -8.7% (3.6%)  
+# 95% CI                   [-16%, -1.3%]   [-16%, -1.3%] 
+# 
+# Posterior tail-area probability p:   0.01131
+# Posterior prob. of a causal effect:  98.869%
+# 
+# For more details, type: summary(impact, "report")
+```
+
+- `CausalImpact` 에 대한 자세한 설명이 궁금하다면 방법론 저자의 글을 확인해보자
+    - <https://storage.googleapis.com/pub-tools-public-publication-data/pdf/41854.pdf>
+
+## (4) Synthetic Control
+
+- Synthetic Control는 `CausalImpact` 와 비슷하게 대조군을 통해 실험군에 treatment가 없을 때를 가정한 데이터를 생성하는 방식으로 treatment 효과를 추정한다
+    - 대조군의 GDP 추세와 여러 가지 공변량을 바탕으로, 실험군에 테러가 일어나지 않았을 경우를 가정했을 때의 GDP를 예측한다
+    - 알고리즘을 통해 대조군의 다양한 변수에 적절한 가중치를 부여하여 일어나지 않은 상황을 추정한다
+- Synthetic Control 과 CausalImpact 의 **차이점**
+    - Synthetic Control 은 **pre-treatment 기간의 데이터만** 사용한다
+    - CausalImpact는 **pre/post treatment 기간 모두의 데이터를** 사용한다
+
+![](https://miro.medium.com/max/2800/1*uhzVrpNFmlIXFAw6gO-fJA.jpeg)
+
+- R의 `Synth` 라이브러리에 구현되어 있다
+    - 계산해보면 `RMSE = 0.57` 이 나온다
+    - **테러로 인해 0.57 단위 GDP가 떨어졌다고** 해석할 수 있다
+
+```r
+library(Synth)
+
+# Synthetic Control
+basque_dataprep <- dataprep(
+    foo = basque,
+    predictors = c('school.illit','school.prim','school.med','school.high','school.post.high','invest'),
+    predictors.op = 'mean',
+    dependent = 'gdpcap',
+    unit.variable = 'regionno',
+    time.variable = 'year',
+    special.predictors = list(
+        list('gdpcap', 1960:1969, c('mean')),                            
+        list('sec.agriculture', seq(1961,1969,2), c('mean')),
+        list('sec.energy', seq(1961,1969,2), c('mean')),
+        list('sec.industry', seq(1961,1969,2), c('mean')),
+        list('sec.construction', seq(1961,1969,2), c('mean')),
+        list('sec.services.venta', seq(1961,1969,2), c('mean')),
+        list('sec.services.nonventa', seq(1961,1969,2), c('mean')),
+        list('popdens', 1969, c('mean'))
+    ),
+    treatment.identifier = 17,
+    controls.identifier = c(2:16, 18),
+    time.predictors.prior = 1964:1969,
+    time.optimize.ssr = 1960:1969,
+    unit.names.variable = 'regionname',
+    time.plot = 1955:1997
+)
+
+basque_synth = synth(basque_dataprep)
+
+# 실제값과 예측값을 통해 RMSE를 계산한다
+actual_gdp <- basque_dataprep$Y1plot
+predicted_gdp <- basque_dataprep$Y0plot %*% basque_synth$solution.w
+round(sqrt(mean((actual_gdp - predicted_gdp)^2)), 2)
+# 0.57
+```
+
+# Comparison
+
+- 각각의 방법론을 통해 **테러로 인해 변화한 1인당 GDP를** 추정해 본 결과는 다음과 같다
+    - Difference in Differences = -0.85
+    - CausalImpact = -0.76
+    - Synthetic Control = -0.57
+- 이 중에서 완벽한 정답이라 할 수 있는 것은 없다
+
+# Some other useful techniques
+
+- Propensity score matching
+- Fixed effect Regression
+- Instrumental variables
+- Regression Discontinuity
