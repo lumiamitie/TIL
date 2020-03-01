@@ -170,4 +170,63 @@
 
 ## 시즌4 (2019-10-01 ~ 2020-01-08)
 
-TODO!
+출석률 70%
+
+### Bayesian
+
+- Statistical Rethinking 요약 정리
+    - [Ch 1 : The Golem of Prague](https://github.com/lumiamitie/TIL/blob/master/bayesian/statistical_rethinking/ch01_the_golem_of_prague.md)
+    - [Ch 2 : Small Worlds and Large Worlds](https://github.com/lumiamitie/TIL/blob/master/bayesian/statistical_rethinking/ch02_small_large_worlds.md)
+    - [Ch 3 : Sampling the Imaginary](https://github.com/lumiamitie/TIL/blob/master/bayesian/statistical_rethinking/ch03_sampling_the_imaginary.md)
+    - [Ch 4 : Geocentric Models](https://github.com/lumiamitie/TIL/blob/master/bayesian/statistical_rethinking/ch04_geocentric_models.md)
+
+### Causal Inference
+
+- [Uber's Synthetic Control Experimentation Framework When A/B Tests are Not Possible](https://github.com/lumiamitie/TIL/blob/master/ds/causal_inference/synthetic_control_in_uber.md)
+- ["X affects Y". What does that even mean? 포스팅 읽고 정리](https://github.com/lumiamitie/TIL/blob/master/rstudy/causal_inference/analyze_effect_x_on_y.md)
+- [Causal inference bake off 포스팅 읽고 정리](https://github.com/lumiamitie/TIL/blob/master/rstudy/causal_inference/ci_bakeoff.md)
+- [Causal Inference using Difference in Differences, Causal Impact, and Synthetic Control 포스팅 읽고 정리](https://github.com/lumiamitie/TIL/blob/master/rstudy/causal_inference/ci_using_several_methods.md)
+
+### Machine Learning
+
+- [Recall and Precision at k for Recommender Systems](https://github.com/lumiamitie/TIL/blob/master/ds/recommendation/recall_precision_at_k.md)
+
+### Dev
+
+- General
+    - [Git에서 디렉토리의 특정한 파일만 제외하고 gitignore 처리하기](https://github.com/lumiamitie/TIL/blob/master/ds/git/ignore_w_exception.md)
+    - [Debian에서 로케일 변경하기](https://github.com/lumiamitie/TIL/blob/master/dev/debian_change_locale.md)
+    - [Gitlab deploy token 적용하기](https://github.com/lumiamitie/TIL/blob/master/dev/gitlab_deploy_token.md)
+    - [ssh 포트가 22가 아닐 때 rsync 사용하기](https://github.com/lumiamitie/TIL/blob/master/dev/rsync_with_non_22_port.md)
+    - [SSH Port Forwarding (Tunneling)](https://github.com/lumiamitie/TIL/blob/master/dev/ssh_port_forwarding.md)
+    - [zip 명령어로 압축할 때 폴더구조로 저장하기 않도록 설정하기](https://github.com/lumiamitie/TIL/blob/master/dev/zip_with_no_parent_directory.md)
+- Web
+    - [HTTP Cookie](https://github.com/lumiamitie/TIL/blob/master/js/general_web/http_cookie.md)
+    - [CSS: 팝업/배너 등이 떠있을 때 메인 페이지 스크롤 방지](https://github.com/lumiamitie/TIL/blob/master/js/disable_scroll_using_css.md)
+    - [DOM 문서가 준비되었는지 확인하기](https://github.com/lumiamitie/TIL/blob/master/js/check_dom_ready.md)
+    - [특정 DOM Node가 존재하는지 확인하기](https://github.com/lumiamitie/TIL/blob/master/js/snippet/check_dom_exists.md)
+- Javascript
+    - [Callback 함수를 Promise로 변경하기](https://github.com/lumiamitie/TIL/blob/master/js/async/callback_to_promise.md)
+    - [nvm vs n](https://github.com/lumiamitie/TIL/blob/master/js/environment/node_with_n.md)
+    - [Mac에서 npm global 설치시 Permission Error 해결하기](https://github.com/lumiamitie/TIL/blob/master/js/environment/npm_global_install_permission.md)
+    - [global 설치 없이 npm 스크립트 실행하기](https://github.com/lumiamitie/TIL/blob/master/js/environment/npm_script_without_global_install.md)
+    - [맥에서 안드로이드 모바일 크롬 원격 디버깅하기](https://github.com/lumiamitie/TIL/blob/master/js/general_web/chrome_remote_debugging.md)
+    - [ES6 에서 import 문은 호이스팅된다..?](https://github.com/lumiamitie/TIL/blob/master/js/modern/import_hoisted.md)
+    - [Vue Error : Unexpected console statement (no-console)](https://github.com/lumiamitie/TIL/blob/master/js/modern/unexpected_console_statement.md)
+    - [MutationObserver 간단 사용법 정리](https://github.com/lumiamitie/TIL/blob/master/js/modern/mutation_observer.md)
+    - [Build your own React 정리](https://github.com/lumiamitie/TIL/blob/master/js/modern/build_your_own_react.md)
+    - [mocha 테스트를 위해 babel 세팅하기](https://github.com/lumiamitie/TIL/blob/master/js/modern/babel_for_mocha.md)
+    - [NodeList 객체에 Array의 메서드 사용하기](https://github.com/lumiamitie/TIL/blob/master/js/snippet/apply_array_methods_to_nodelist.md)
+    - [CookieStorage : Storage API 형식으로 cookie 다루기](https://github.com/lumiamitie/TIL/blob/master/js/snippet/cookieStorage.md)
+    - [JS에서 문자열에 replaceAll 적용하기](https://github.com/lumiamitie/TIL/blob/master/js/snippet/replace_all.md)
+    - [프론트엔드 테스트 코드 작성 (puppeteer, mocha, chai)](https://github.com/lumiamitie/TIL/blob/master/js/test/basic_frontend_test.md)
+    - [Puppeteer 에서 브라우징 정보 초기화하기](https://github.com/lumiamitie/TIL/blob/master/js/test/clear_history_in_puppeteer.md)
+    - [문자열을 base64로 인코딩하기](https://github.com/lumiamitie/TIL/blob/master/js/encode_base64_in_js.md)
+    - [Node Express 에서 Response에 걸리는 시간 기록하기](https://github.com/lumiamitie/TIL/blob/master/js/express_resp_time.md)
+- Python
+    - [특정 변수가 함수인지 확인하기](https://github.com/lumiamitie/TIL/blob/master/python/check_function.md)
+    - [funcy rcompose로 function pipeline 구성하기](https://github.com/lumiamitie/TIL/blob/master/python/funcy_rcompose.md)
+    - [Pandas DataFrame에 들어있는 이미지 URL 렌더링하기](https://github.com/lumiamitie/TIL/blob/master/python/render_img_in_dataframe.md)
+- R
+    - [Recipes 라이브러리를 이용한 upsampling 예제](https://github.com/lumiamitie/TIL/blob/master/rstudy/preprocess/recipes_upsampling.md)
+    - [Rprofile.site 위치 찾기](https://github.com/lumiamitie/TIL/blob/master/rstudy/where_is_rprofile_site.md)
