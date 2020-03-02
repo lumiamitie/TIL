@@ -136,3 +136,114 @@ p ~ Uniform(0, 1)
 정규 분포를 구성하기 위해서는 평균과 표준편차라는 2개의 파라미터가 필요하다. 
 가능한 모든 평균/표준편차 조합에 대해 각 조합이 얼마나 타당한지 데이터를 통해 계산하면, 이 값이 바로 posterior 확률이 된다. 
 실제로 계산할 때는 근사치로 구하게 된다. 모든 조합을 구하는 대신 "분포의 분포" 형태로 표현한다.
+
+## 4.3.1 The data
+
+`Howell1` 데이터는 Nancy Howell에 의해 1960년대 후반에 수집된 Dobe 지역 !Kung San 사람들을 조사한 데이터다. 
+rethinking 라이브러리에서 다음과 같이 데이터를 확인할 수 있다.
+
+```r
+library(rethinking)
+library(tidyverse)
+
+# Howell1 데이터를 메모리에 불러온다
+data('Howell1')
+```
+
+그 중에서도 성인들의 키를 분석 대상으로 한다. 그렇게 하는 이유는, 성인이 되기 전에는 나이와 키 사이에 강한 상관관계가 존재하기 때문이다. 
+우선 지금은 복잡하게 고민하지 말고 18살 이상의 사람들의 데이터만 사용하는 것으로 한다.
+
+```r
+# age 변수의 값이 18 이상인 row만 추출하여 howell1_data 변수에 저장한다
+howell1_data <- Howell1 %>% filter(age >= 18)
+```
+
+## 4.3.2 The model
+
+우리의 목표는 정규분포를 통해 데이터의 값들을 모델링하는 것이다. `height` 변수의 분포를 그래프로 그려보면 정규분포와 유사한 형태를 보인다는 것을 알 수 있다. 
+하나의 모집단에서 나온 값들이라면 성인의 키 분포는 대부분 정규 분포를 따르게 된다. 
+따라서 현재로서는 데이터의 확률 분포를 표현하기 위해 정규 분포를 사용하는 것이 합리적이다. 
+(하지만 그래프를 그렸을 때 정규 분포처럼 보일 때만 사용하는 것은 위험하다. 서로 다른 정규 분포가 혼합된 분포일 경우, 눈으로 판단하는 것이 쉽지 않을 수 있다.)
+
+수많은 정규 분포가 존재하지만, 데이터는 평균이 mu 이고 표준편차가 sigma 인 정규 분포를 따른다고 정의한다.
+
+```
+h_i ~ Normal(mu, sigma)
+
+- i는 352개의 데이터 포인트 각각의 인덱스를 의미한다 (howell1_data$height)
+```
+
+모형을 완성하기 위해서는 몇 가지 prior가 필요하다. 추정해야 하는 파라미터는 mu와 sigma이기 때문에, prior `Pr(mu, sigma)` 를 알아야 한다. 
+대부분의 경우 prior는 각 파라미터별로 독립적으로 구분하기 때문에 다음과 같이 정리할 수 있다.
+
+```
+h_i   ~ Normal(mu, sigma)     : Likelihood
+mu    ~ Normal(178, 20)       : mu prior
+sigma ~ Uniform(0, 50)        : sigma prior
+
+- mu의 prior는 95%의 확률로 평균이 (138, 218) 범위 안에 존재하는 분포를 의미한다
+```
+
+왜 178cm 일까? 이 책의 저자의 키는 178cm 이다. 그리고 138cm 부터 218cm 라면 성인 인간의 키가 분포할 수 있을 법한 구간을 나타낸다. 
+따라서 특정 도메인의 정보를 Prior에 반영한 것이라고 볼 수 있다. 
+현재 우리가 다루고 있는 문제는 모두가 알고 있는 정보기 때문에 이러한 방식으로 prior를 설정할 수 있다. 
+하지만 일반적인 회귀 문제에서는 조금 더 미묘하다. 파라미터들이 항상 실질적인 의미를 가지고 있는 것은 아니기 때문이다.
+
+실제로 각 Prior 들이 어떤 의미를 가지고 있는지 확인해보는 작업은 중요하다. 따라서 모델링 과정에 필수적으로 **Prior Predictive** 시뮬레이션을 수행한다. 
+시뮬레이션을 통해 Prior가 실제 키 값에 어떤 영향을 미치는지 확인한다. Prior 로부터 데이터를 샘플링해보자.
+
+```r
+withr::with_par(list(mfrow = c(1, 2)), {
+    # mu ~ Normal(178, 20) 로 샘플링
+    set.seed(123)
+    sample_mu <- rnorm(1e4, 178, 20)
+    sample_sigma <- runif(1e4, 0, 50)
+    prior_h <- rnorm(1e4, sample_mu, sample_sigma)
+    rethinking::dens(prior_h, main = 'mu ~ Normal(178, 20)')
+    
+    # mu ~ Normal(178, 100) 로 샘플링
+    set.seed(123)
+    sample_mu <- rnorm(1e4, 178, 100)
+    prior_h <- rnorm(1e4, sample_mu, sample_sigma)
+    rethinking::dens(prior_h, main = 'mu ~ Normal(178, 100)')
+})
+```
+
+![](fig/ch4_height_prior_predictive.png)
+
+오른쪽 그래프에서는 대략 4%의 사람들이 음수의 키를 갖는 것으로 나온다. 또는 거인들도 존재하게 된다. 
+이게 문제가 될 수 있을까? 지금은 데이터가 충분히 존재하기 때문에 말도 안되는 prior를 사용하더라도 큰 문제가 없다. 
+하지만 데이터만으로는 충분하지 않은 문제들도 분명히 존재한다. 
+
+## 4.3.3 Grid Approximation of the posterior distribution
+
+우리가 책에서 처음으로 다루게 되면 정규 분포 모형이기 때문에, brute force 방법을 통해 빠르게 posterior 분포를 구해보자. 
+코드 작성이 쉽지 않고 계산량이 많기 때문에 다른 곳에서는 이 방식을 사용하지 않을 것이다. 
+이 계산을 위해서는 몇 가지 트릭이 필요하기 때문에 설명없이 코드만 실행해보자.
+
+```r
+set.seed(123)
+
+mu_list <- seq(from = 150, to = 160, length.out = 100)
+sigma_list <- seq(from = 7, to = 9, length.out = 100)
+post <- expand.grid(mu = mu_list, sigma = sigma_list)
+
+post$LL <- sapply(1:nrow(post), function(i) {
+    sum(dnorm(howell1_data$height, post$mu[i], post$sigma[i], log = TRUE))
+})
+
+post$prod <- post$LL + 
+    dnorm(post$mu, 178, 20, TRUE) +
+    dunif(post$sigma, 0, 50, TRUE)
+
+post$prob <- exp(post$prod - max(post$prod))
+```
+
+키 데이터의 posterior 샘플링 결과 분포는 다음과 같다.
+
+```r
+# Heatmap을 그려서 분포를 살펴보자
+rethinking::image_xyz(post$mu, post$sigma, post$prob)
+```
+
+![](fig/ch4_height_grid_approx.png)
