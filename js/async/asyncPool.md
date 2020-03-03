@@ -62,13 +62,13 @@ const promisePool = function(n, arr, taskFn, throwErrorWhenFailed = false) {
 ## 사용 방법
 
 ```javascript
-// 이상한 데이터가 섞여있다 (4번째 항목에는 b가 없음)
+// 이상한 데이터가 섞여있다 (4,5번째 항목에는 b가 없음)
 let arrr = [
     {a: 10, b: 20},
     {a: 11, b: 21},
     {a: 12, b: 22},
     {a: 13, c: 23},
-    {a: 14, b: 24},
+    {a: 14, d: 24},
 ]
 
 // (1) 3개의 worker 사용, 에러 throw하지 않는 경우
