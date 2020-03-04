@@ -247,3 +247,139 @@ rethinking::image_xyz(post$mu, post$sigma, post$prob)
 ```
 
 ![](fig/ch4_height_grid_approx.png)
+
+## 4.3.4 Sampling from the posterior
+
+Posterior 분포를 더 자세히 살펴보기 위해 3장에서 지구본 던지기 문제에 적용했던 보다 유연한 방법을 적용해 보자. 
+달라지는 것이 있다면 이번에는 두 개의 파라미터의 조합에서 샘플링해야 한다는 점이다. 복원 추출로 10,000개의 키 데이터 posterior 분포를 구해보자.
+
+```r
+set.seed(123)
+
+# post$prob 의 확률값에 비례하여 post 데이터프레임의 row index를 샘플링한다
+sample_rows <- sample(1:nrow(post), size = 1e4, replace = TRUE, prob = post$prob)
+
+# 샘플링한 row index를 바탕으로 mu, sigma 값을 추출한다
+sample_mu <- post$mu[sample_rows]
+sample_sigma <- post$sigma[sample_rows]
+
+# 키 데이터의 Posterior 분포를 그래프로 살펴보자
+plot(sample_mu, sample_sigma, cex = 0.5, pch = 16, col = col.alpha(rangi2, 0.1))
+# 참고. col.alpha 는 rethinking 라이브러리의 함수로, 색상에 투명도를 부여한다
+```
+
+![](fig/ch4_height_posterior_sampling.png)
+
+이제 샘플링 결과를 요약하는 방식으로 파라미터 조합의 신뢰도 분포를 계산할 수 있다. 
+예를 들면, 각 파라미터의 marginal 분포를 구하기 위해서는 다음과 같이 하면 된다.
+
+```r
+# 각 파라미터의 분포를 그래프를 통해 확인한다
+rethinking::dens(sample_mu)
+rethinking::dens(sample_sigma)
+
+# Posterior compatibility interval 계산하기
+rethinking::PI(sample_mu)
+#       5%      94% 
+# 153.9394 155.2525 
+rethinking::PI(sample_sigma)
+#       5%      94% 
+# 7.323232 8.252525
+```
+
+*"marginal"* 이라는 것은 **"다른 파라미터에 대해 평균한다" 는 것을 의미한다.** 
+각각의 분포는 정규 분포와 비슷한 형태를 띄고, 대체로 이런 경우가 많다. 샘플 수가 많아질수록 Posterior 분포가 정규분포에 가까워진다. 
+자세히 보면 sigma의 분포는 살짝 오른쪽 꼬리가 긴데, 이 부분에 대해서는 나중에 자세히 다룰 예정이다. 
+(표준 편차와 같은 형태의 파라미터에서 자주 나타나는 형태의 분포다)
+
+샘플링을 통해 추출한 값은 일반적인 벡터 형태이기 때문에, 평균 등 자료를 요약할 때 사용하는 통계량을 적용할 수 있다.
+
+## 4.3.5 Finding the posterior distribution with `quap`
+
+이제 Grid Approximation은 내려놓고, **Quadratic Approximation** 을 사용해보자. 
+Posterior 분포에서 가장 높은 지점인 **MAP (Maximum a posteriori)** 를 추정해야 하는데, 
+Quadratic approx를 통해 posterior 분포를 근사하여 구하게 된다. 
+Quadratic approximation 을 위해 rethinking 패키지의 `quap` 함수를 사용한다. 
+참고로 이 작업은 베이지안이 아닌 다른 방법론과 유사하게 Prior를 사용하지 않는 방식이다.
+
+```r
+library(rethinking)
+library(tidyverse)
+
+data('Howell1')
+howell1_data <- Howell1 %>% filter(age >= 18)
+
+# base::alist 함수를 통해 모형을 정의한다
+# - mu ~ dnorm( 178 , 20 ) 은 굉장히 약한 prior다 
+# - mu ~ dnorm( 178 , 0.1 ) 은 굉장히 강한 prior가 된다
+model_definition <- alist(
+    height ~ dnorm(mu, sigma),
+    mu ~ dnorm( 178 , 20 ),
+    sigma ~ dunif( 0 , 50 )
+)
+
+# 모형에 데이터를 fitting한다
+model_quap_01 <- quap(model_definition , data = howell1_data)
+
+# Posterior 분포를 간단히 살펴보자
+# - 각 파라미터의 marginal distribution을 정규 분포에 근사한 형태
+# - 5.5%, 94.5% 백분위 값을 통해 89% 신뢰구간을 구할 수 있다
+# - 왜 89%냐면, 95%로 설정하면 사람들이 자꾸 유의성 검정 테스트처럼 생각해버려서
+#   기본값을 바꾸어두었다
+precis(model_quap_01)
+#         mean   sd   5.5%  94.5%
+# mu    154.61 0.41 153.95 155.27
+# sigma   7.73 0.29   7.27   8.20
+```
+
+## 4.3.6 Sampling from a `quap`
+
+`quap` 함수로 Posterior 분포를 근사시켰다면, 샘플링은 어떻게 할 수 있을까? 
+이를 위해서는 quadratic approximation의 결과가 mu, sigma 두 개의 차원으로 이루어진 다변량 정규분포라는 것을 이해해야 한다. 
+따라서 R에서 계산하기 위해서는 각 파라미터의 표준편차 뿐만 아니라 파라미터 간의 공변량까지 구해야 한다. 
+
+```r
+# variance - covariance 행렬을 구한다
+rethinking::vcov(model_quap_01)
+#                 mu        sigma
+# mu    0.1697357114 0.0002186345
+# sigma 0.0002186345 0.0849009400
+
+# variance - covariance 행렬은 두 가지 항목으로 분리할 수 있다
+# (1) 각 파라미터의 분산
+diag(vcov(model_quap_01))
+#         mu      sigma 
+# 0.16973571 0.08490094
+
+# (2) 각 파라미터 사이의 상관관계 행렬
+cov2cor(vcov(model_quap_01))
+#                mu       sigma
+# mu    1.000000000 0.001821276
+# sigma 0.001821276 1.000000000
+```
+
+이제 학습시킨 다변량 정규분포에서 샘플링한다. rethinking 라이브러리에서 이 작업을 쉽게 하기 위한 함수를 제공한다.
+
+```r
+m_quap_posterior <- rethinking::extract.samples(model_quap_01, n = 1e4)
+head(m_quap_posterior)
+#         mu    sigma
+# 1 154.8397 7.041067
+# 2 154.7018 7.780093
+# 3 153.9656 7.459495
+# 4 154.5776 7.896715
+# 5 154.5540 7.665521
+# 6 153.9013 7.399590
+```
+
+각각의 값이 posterior 에서 샘플링한 결과이기 때문에, 각 열의 평균을 구하면 MAP와 매우 근사한 값을 구할 수 있다.
+
+```r
+rethinking::precis(m_quap_posterior)
+# quap posterior: 10000 samples from model_quap_01
+#         mean   sd   5.5%  94.5%   histogram
+# mu    154.61 0.41 153.95 155.26     ▁▁▅▇▂▁▁
+# sigma   7.73 0.29   7.26   8.20 ▁▁▁▂▅▇▇▃▁▁▁
+```
+
+이 샘플링 결과는 두 파라미터의 공분산까지 보존한다. 지금은 크게 문제가 되지 않지만, 파라미터가 많아질수록 공분산이 문제가 되는 경우가 많아진다.
