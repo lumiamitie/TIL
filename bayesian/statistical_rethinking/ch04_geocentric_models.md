@@ -383,3 +383,64 @@ rethinking::precis(m_quap_posterior)
 ```
 
 이 샘플링 결과는 두 파라미터의 공분산까지 보존한다. 지금은 크게 문제가 되지 않지만, 파라미터가 많아질수록 공분산이 문제가 되는 경우가 많아진다.
+
+# 4.4 Linear Prediction
+
+성인 모집단의 키 분포를 정규 분포를 통해 모델링 해보았다. 하지만 그것만 가지고는 일반적인 회귀 모형을 수행하는 것과는 거리가 있다. 
+우리가 모델링을 하는 이유 중 하나는 결과 변수가 다른 변수들(predictor variable)과 어떻게 관련되어 있는지를 알고자 한다. 
+만약 입력 변수들이 결과 변수와 특정한 통계적인 관계가 존재한다면 이를 예측에 활용할 수 있다. 
+
+그러면 이제 키가 체중과 어떤 연관이 있는지 살펴보자. 크게 학문적으로 흥미로운 질문이 아니라는 것은 알고 있지만, 모델링을 시작하기에는 좋은 사례다. 
+그래프를 그려서 대략적인 관계를 살펴보자.
+
+```r
+ggplot(howell1_data, aes(x = height, y = weight)) +
+    geom_point(color = '#1D4E89') +
+    theme_minimal()
+```
+
+![](fig/ch4_linear_relation_01.png)
+
+## 4.4.1 The linear model strategy
+
+이전의 정규 분포 모형과 입력 변수 사이의 관계를 통합하기 위해 사용하는 전략이 있다. 정규분포의 평균인 mu와 다른 입력 변수를 연결하는 선형 함수를 만드는 것이다. 
+이것을 바로 **선형 모형 (Linear model)** 이라고 한다. 그러면 이런 선형 관계 가정을 통해 posterior 분포를 계산할 수 있다. 
+
+어떻게 하는지 살펴보자.
+
+```
+h_i   ~ Normal(mu_i, sigma)          : Likelihood
+mu_i  ~ alpha + beta * (x_i - mu_x)  : Linear Model
+alpha ~ Normal(178, 20)              : alpha prior
+beta  ~ Log-Normal(0, 10)            : beta prior
+sigma ~ Uniform(0, 50)               : sigma prior
+```
+
+## 4.4.2 Finding the posterior distribution
+
+이제 새로 정의한 모형을 R 코드로 변환해보자.
+
+```
+h_i   ~ Normal(mu_i, sigma)          : Likelihood    ->  height ~ dnorm(mu, sigma)
+mu_i  ~ alpha + beta * (x_i - mu_x)  : Linear Model  ->  mu <- a + b*weight
+alpha ~ Normal(178, 20)              : alpha prior   ->  a ~ dnorm(178, 20)
+beta  ~ Log-Normal(0, 10)            : beta prior    ->  b ~ dlnorm(0, 1)
+sigma ~ Uniform(0, 50)               : sigma prior   ->  sigma ~ dunif(0, 50)
+```
+
+```r
+# 평균 몸무게값을 x_bar 로 정의한다
+x_bar <- mean(howell1_data$weight)
+
+# 모형을 학습해보자
+model_quap_03 <- quap(
+    flist = alist(
+        height ~ dnorm(mu, sigma),
+        mu <- a + b*(weight - x_bar),
+        a ~ dnorm(178, 20),
+        b ~ dlnorm(0, 1),
+        sigma ~ dunif(0, 50)
+    ), 
+    data = howell1_data
+)
+```
