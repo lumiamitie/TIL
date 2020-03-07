@@ -444,3 +444,135 @@ model_quap_03 <- quap(
     data = howell1_data
 )
 ```
+
+## 4.4.3 Interpreting the posterior distribution
+
+이렇게 생성한 모형을 해석하는 방식은 크게 두 가지가 있다.
+
+1. 표를 만들어서 읽는다
+2. 시뮬레이션 결과를 그래프로 그린다
+
+간단한 문제라면 marginal 값에 대한 표를 그리는 것 만으로도 많은 것을 해결할 수 있다. 하지만 대부분의 문제들은 표의 몇몇 수치만으로 이해하기 어렵다. 파라미터 수가 많아지면 모든 파라미터들이 예측 결과에 어떤 영향을 미치게 될지 파악하기 어려워진다. 따라서 이 책에서는 Posterior 분포와 Posterior 예측 결과를 그래프로 그려보는 것을 권장한다. 그래프를 통해 다음과 같은 질문들을 던져보자. 
+
+1. 모형 학습 과정이 잘 이루어졌는가
+2. 예측 변수와 결과 변수간 관계에 대한 절대적인 크기
+3. 예측 변수와 결과 변수간 평균적인 관계가 가지는 불확실성
+4. 파라미터의 불확실성과는 별개로 모형의 암묵적인 예측이 가지는 불확실성
+
+# 4.5 Curves from lines
+
+이번에는 선형 회귀 방법론을 통해 곡선 모형을 학습하는 방법을 알아보자. 첫 번째는 **Polynomial Regression** , 두 번째는 **B-Spline** 이다. 두 방법론 모두 하나의 입력 변수를 여러 개로 만든 후에 가중치를 이용해 조정하는 방식을 사용한다. 하지만 spline 쪽이 좀 더 명확한 장점을 가지고 있다. 두 가지 모두 변수들 간의 관계를 표현하는 함수 역할만을 하기 때문에, 인과 관계를 추론하고자 할 때는 더 많은 것들이 필요해진다.
+
+## 4.5.1 Polynomial Regression
+
+Polynomial Regression 은 변수들의 거듭제곱 형태를 추가적인 입력 변수로 사용한다. 어떤 방식으로 동작하는지 확인해보기 위해 !Kung 데이터 전체를 가지고 적용해보자.
+
+```r
+library(rethinking)
+library(tidyverse)
+
+data('Howell1')
+str(Howell1)
+# 'data.frame':	544 obs. of  4 variables:
+#  $ height: num  152 140 137 157 145 ...
+#  $ weight: num  47.8 36.5 31.9 53 41.3 ...
+#  $ age   : num  63 63 65 41 51 35 32 27 19 54 ...
+#  $ male  : int  1 0 0 1 0 1 0 1 0 1 ...
+```
+
+가장 일반적으로 사용되는 polynomial regression 은 평균에 대한 포물선 모형이다.
+
+```
+mu_i = alpha + (beta1 * x_i) + (beta2 * x_i^2)
+```
+
+이런 모형은 쉽게 학습할 수는 있지만, 해석하기가 어렵다. 이제 몸무게를 통해 키를 설명하는 포물선 모형을 학습해보자. 우선 해야 하는 작업은 예측 변수를 표준화(Standardize)하는 것이다. 이 작업은 polynomial 모형을 학습할 때 특히 도움이 된다. 예측 변수 중에 스케일이 큰 값이 있다면 잘못된 예측으로 이어질 가능성이 있다. polynomial 모형에는 제곱이나 세제곱 등이 포함되어 있기 때문에 더 큰 영향을 받게 된다. 포물선 모형을 만들 때는 `mu_i` 부분만 수정하면 된다.
+
+```
+h_i   ~ Normal(mu_i, sigma)                 ->  height ~ dnorm(mu, sigma)
+mu_i  ~ alpha + beta1*{x_i} +beta2*{x_i}^2  ->  mu <- a + b1*weight_s +b2*weight_s^2
+alpha ~ Normal(178, 20)                     ->  a ~ dnorm(178, 20)
+beta1 ~ Log-Normal(0, 1)                    ->  b1 ~ dlnorm(0, 1)
+beta2 ~ Normal(0, 1)                        ->  b2 ~ dnorm(0, 1)
+sigma ~ Uniform(0, 50)                      ->  sigma ~ dunif(0, 50)
+```
+
+beta2 의 prior를 설정하는 부분이 조금 헷갈릴 수 있다. beta1 과는 달리, 굳이 양수 값만 받아야 할 필요가 없다. 이번 장이 끝날 쯤에 prior predictive 시뮬레이션을 통해 왜 그런지 살펴보자. Polynomial 파라미터는 보통 현실적인 prior를 설정하는 것이 어려운데, polynomial 모형을 피하고자 하는 또 다른 이유기도 하다.
+
+Posterior 를 근사시키는 것은 직관적이다. 
+
+```r
+howell_data <- Howell1 %>% 
+    as_tibble() %>% 
+    # weight 변수를 표준화시킨다
+    mutate(weight_s = (weight - mean(weight)) / sd(weight),
+            weight_s2 = weight_s^2)
+
+model_quap_04 <- quap(
+    alist(
+        height ~ dnorm(mu, sigma),
+        mu <- a + b1*weight_s + b2*weight_s2,
+        a ~ dnorm(178, 20),
+        b1 ~ dlnorm(0, 1),
+        b2 ~ dnorm(0, 1),
+        sigma ~ dunif(0, 50)
+    ), 
+    data = howell_data
+)
+```
+
+이제 height와 weight 변수 간의 관계가 두 개의 기울기 값을 통해 표현되기 때문에 모델링 결과의 계수를 해석하는 것이 쉽지 않다.
+
+```r
+precis(model_quap_04)
+#         mean   sd   5.5%  94.5%
+# a     146.06 0.37 145.47 146.65
+# b1     21.73 0.29  21.27  22.19
+# b2     -7.80 0.27  -8.24  -7.37
+# sigma   5.77 0.18   5.49   6.06
+```
+
+그래프를 통해 살펴보자. 
+
+```r
+# 예측값을 구하기 위해 표준화된 weight 값의 그리드를 만든다
+pred_data_raw <- tibble(
+    weight_s = seq(from = -2.2, to = 2, length.out = 30),
+    weight_s2 = weight_s^2
+)
+
+# height ~ weight의 평균적인 관계와 그 Percentile Interval
+mu <- link(model_quap_04, data = pred_data_raw)
+mu_mean <- apply(mu, 2, mean)
+mu_PI <- apply(mu, 2, PI, prob = 0.89)
+
+# 시뮬레이션을 통해 생성한 height의 Percentile Interval
+simulated_height <- sim(model_quap_04, data = pred_data_raw)
+sim_height_PI <- apply(simulated_height, 2, PI, prob = 0.89)
+
+# 예측값을 모아서 데이터프레임으로 구성한다
+pred_data <- pred_data_raw %>% 
+    mutate(mu_mean = mu_mean,
+            mu_PI_05 = mu_PI[1,],
+            mu_PI_94 = mu_PI[2,],
+            height_PI_05 = sim_height_PI[1,],
+            height_PI_94 = sim_height_PI[2,])
+
+# 그래프로 그린다
+ggplot(howell_data, aes(x = weight_s)) +
+    geom_point(aes(y = height), color = '#1D4E89', alpha = 0.5) +
+    geom_line(data = pred_data, aes(y = mu_mean), color = '#1D4E89', size = 1) +
+    geom_ribbon(data = pred_data, aes(ymin = mu_PI_05, ymax = mu_PI_94), fill = '#1D4E89', alpha = 0.5) +
+    geom_ribbon(data = pred_data, aes(ymin = height_PI_05, ymax = height_PI_94), fill = '#1D4E89', alpha = 0.2) +
+    labs(x = 'Standardized Weight', 
+        y = 'Height',
+        title = 'Polynomial Regression : Quadratic Model') +
+    theme_minimal()
+```
+
+![](fig/ch4_polynomial_quadratic_01.png)
+
+2차항 대신 3차항을 사용할 경우 더 유연하기 때문에 데이터가 더 잘 학습된다. 하지만 어떤 모형이 더 좋은지 판단하기는 쉽지 않다. 
+
+1. 학습이 더 잘 되었다고 해서 더 나은 모형이라는 법은 없다. (Ch 7에서 다룬다)
+2. 모형이 생물학적인 정보는 담고 있지 않기 때문에, 키와 몸무게 사이의 인과적인 관계에 대해서는 알 수 없다. (Ch 16에서 다룬다)
