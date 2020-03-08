@@ -576,3 +576,143 @@ ggplot(howell_data, aes(x = weight_s)) +
 
 1. 학습이 더 잘 되었다고 해서 더 나은 모형이라는 법은 없다. (Ch 7에서 다룬다)
 2. 모형이 생물학적인 정보는 담고 있지 않기 때문에, 키와 몸무게 사이의 인과적인 관계에 대해서는 알 수 없다. (Ch 16에서 다룬다)
+
+## 4.5.2 Splines
+
+곡선을 학습하는 또 한 가지 방법은 **Spline** 이라는 것을 구성하는 것이다. 
+Spline에는 많은 종류가 있는데, 그 중에서도 우리가 살펴볼 **B-Spline** 은 가장 널리 사용되기도 하고, 좋은 성질이 많은 방법이다. 
+(여기서 B는 "Basis" 를 의미한다. Component를 의미한다고 생각하자.) 
+
+**B-Spline** 은 특정한 예측 변수를 여러 부분으로 나누고, 각 부분에 파라미터를 설정한다. 
+이 파라미터들은 점진적으로 켜지거나 꺼지면서 주기적으로 반복되는 형태의 곡선을 구성한다. 
+이렇게 곡선과는 거리가 먼 로컬 함수를 여러 개 만들고, 가중치를 통해 합쳐가면서 점차 하나의 곡선을 표현하는 함수를 만들어낸다. 
+
+조금 더 자세하게 살펴보자. 연도별 온도 데이터를 B-Spline을 통해 근사시켜보자. 
+B-Spline은 Polynomial Regression과 달리 예측 변수에 직접 제곱이나 세제곱을 취하지 않는다. 대신 여러 개의 인공적인 예측 변수를 생성한다. 
+이 변수들 각각을 **Basis Function** 이라고 한다. 
+그리고 각 파라미터는 기울기처럼, 대응되는 Basis function이 평균 `mu_i` 에 얼마나 영향을 미치는지를 나타낸다. 선형 모형을 정리해보면 다음과 같다.
+
+```
+mu_i = alpha + w1 * B_{i,1} + w2 * B_{i,2} + ...
+
+여기서, 
+* B_{i,1} 은 i행의 n번째 Basis Function
+* w는 각 Basis Funciton에 대응하는 가중치를 의미한다
+```
+
+basis 변수 B는 어떻게 구성할 수 있을까? 
+
+1. 전체 가로축을 4개의 영역으로 나눈다. 이 때 각 영역을 나누기 위핸 piovt point를 **Knots** 라고 한다.
+2. 이렇게 영역을 나누면 5개의 Basis Function (B 변수) 가 생기는데, 각 영역에서 다음 영역으로 이동시키는 역할을 한다.
+3. 모형에 데이터를 학습시키면 각 basis function의 가중치를 구할 수 있다.
+4. 이렇게 구한 spline 을 통해, 온도 데이터에 대한 97% posterior interval을 구할 수 있다.
+5. 다음과 같은 방법을 통해 spline의 정확도를 높일 수 있다.
+    - 더 많은 knots 를 사용한다
+    - 각각의 basis function을 구성할 때 선형 근사를 사용하는 대신 높은 차수의 다항 함수를 사용한다
+
+실제 데이터에 적용해보자.
+
+```r
+# rethinking 라이브러리의 cherry_blossoms 데이터를 메모리상에 불러온다
+data('cherry_blossoms', package = 'rethinking')
+
+# temp 변수가 존재하는 행으로만 필터링한다
+cherry_blossoms_data <- cherry_blossoms %>% 
+    as_tibble() %>% 
+    filter(complete.cases(temp))
+
+# 주어진 개수의 knot을 생성한다
+NUM_KNOTS <- 15
+knot_list <- quantile(cherry_blossoms_data$year, probs = seq(0, 1, length.out=NUM_KNOTS))
+
+# Degree=3 의 basis function을 생성한다
+# * [1124, 17] 사이즈의 행렬이 만들어진다
+# * 각 행은 year 변수를, 각 열은 basis function을 의미한다
+basis_functions <- splines::bs(
+    cherry_blossoms_data$year,
+    knots = knot_list[-c(1, NUM_KNOTS)],
+    degree = 3,
+    intercept = TRUE
+)
+
+# 각 basis function의 값을 그래프를 통해 확인해보자
+basis_functions %>% 
+    as_tibble() %>% 
+    mutate(year = cherry_blossoms_data$year) %>% 
+    tidyr::pivot_longer(names_to = 'knot', -year) %>% 
+    ggplot(aes(x = year, y = as.numeric(value), group = knot)) +
+        geom_line(color = '#1D4E89', alpha = 0.5) +
+        labs(x = 'Year', y = 'Basis Value') +
+        theme_minimal()
+```
+
+![](fig/ch4_spline_01.png)
+
+이제 각 basis function의 파라미터 가중치를 구해보자. 수학적인 형태로 spline 모형을 표현하면 다음과 같다.
+
+```
+T_i   ~ Normal(mu_i, sigma)
+mu_i  ~ alpha + SUM_{k=1}^{K}( w_k * B_{k,i} )
+alpha ~ Normal(6, 10)
+w_j   ~ Normal(0, 1)
+sigma ~ Exponential(1)
+
+* 각 basis value에 대응하는 파라미터 w_j 를 곱하고, 모두 합한다
+```
+
+R 코드로는 다음과 같이 구할 수 있다.
+
+```r
+model_spline_01 <- quap(
+    alist(
+        T ~ dnorm(mu, sigma),
+        mu <- a + B %*% w,
+        a ~ dnorm(6, 10),
+        w ~ dnorm(0, 1),
+        sigma ~ dexp(1)
+    ),
+    data = list(T = cherry_blossoms_data$temp, B = basis_functions),
+    start = list(w = rep(0, ncol(basis_functions))) 
+)
+```
+
+Posterior 예측 결과를 그래프로 그려보자.
+
+```r
+# Basis Value * Weight 값을 계산하여 그래프로 그려보자
+posterior_spline <- rethinking::extract.samples(model_spline_01)
+posterior_means <- apply(posterior_spline$w, 2, mean)
+weighted_basis <- t(apply(basis_functions, 1, function(x) x * posterior_means))
+
+weighted_basis %>% 
+    as_tibble() %>% 
+    mutate(year = cherry_blossoms_data$year) %>% 
+    tidyr::pivot_longer(names_to = 'knot', -year) %>% 
+    ggplot(aes(x = year, y = as.numeric(value), group = knot)) +
+        geom_vline(data = data.frame(x = knot_list), aes(xintercept = x), linetype = 2, alpha = 0.3) +
+        geom_line(color = '#1D4E89', alpha = 0.5, size = 0.8) +
+        labs(x = 'Year', y = 'Basis Value') +
+        theme_minimal(base_size = 14)
+```
+
+![](fig/ch4_spline_02.png)
+
+이제 각 연도별 평균 온도에 대한 97% Posterior Interval을 계산해보자.
+
+```r
+# 97% Posterior Interval 을 생성한다
+mu_temp <- link(model_spline_01)
+mu_temp_PI <- apply(mu_temp, 2, PI, 0.97)
+
+cherry_blossoms_data %>% 
+    mutate(mu_temp_PI_02 = mu_temp_PI[1,],
+            mu_temp_PI_98 = mu_temp_PI[2,]) %>% 
+    ggplot(aes(x = year)) +
+    geom_point(aes(y = temp), color = '#1D4E89', size = 1, alpha = 0.5) +
+    geom_ribbon(aes(ymin = mu_temp_PI_02, ymax = mu_temp_PI_98), fill = '#1D4E89', alpha = 0.5) +
+    labs(x = 'Year', y = 'Temperature',
+        title = '97% Posterior Interval for mu, at each year') +
+    theme_minimal(base_size = 14)
+```
+
+![](fig/ch4_spline_03.png)
