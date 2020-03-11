@@ -90,3 +90,98 @@ prior_simulated_mu %>%
 ![](fig/ch5_marriage_divorce_prior_simulation_01.png)
 
 이번에는 Posterior 예측 결과를 시뮬레이션 해보자.
+
+이번에는 Posterior 예측 결과를 시뮬레이션 해보자. 아래 그래프를 보면 우측은 좌측 그래프에 비해 약한 상관관계를 보인다는 것을 알 수 있다. 
+하지만 이런 방식의 비교로는 어떤 예측 변수가 더 나은지 알 수 없다. 두 변수가 서로 독립적일 수도 있고, 중복되거나 서로 상쇄할 수도 있다. 
+
+```r
+# 평균에 대한 Percentile Interval을 계산한다 (Median Age Marriage)
+age_seq <- seq(from = -3, to = 3.2, length.out = 30)
+post_mu <- link(model_waffle_divorce, data = list(s_age = age_seq))
+post_mu_mean <- apply(post_mu, 2, mean)
+post_mu_PI <- apply(post_mu, 2, PI)
+
+# 그래프로 그리기 쉽게 데이터 프레임으로 묶는다
+post_mu_result <- tibble(
+    s_age = age_seq,
+    mu_mean = post_mu_mean,
+    mu_PI_05 = post_mu_PI[1,],
+    mu_PI_94 = post_mu_PI[2,],
+)
+
+# 결혼율 변수도 표준화시킨다
+waffle_divorce2 <- waffle_divorce %>% 
+    mutate(s_marriage = scale(Marriage)[,1])
+
+# 결혼율과 이혼율의 관계를 모형으로 fitting 한다
+model_waffle_divorce2 <- quap(
+    alist(
+    s_divorce ~ dnorm(mu, sigma),
+    mu <- a + bM * s_marriage,
+    a ~ dnorm(0, 0.2),
+    bM ~ dnorm(0, 0.5),
+    sigma ~ dexp(1)
+    ),
+    data = waffle_divorce2
+)
+
+# 평균에 대한 Percentile Interval을 계산한다 (Marriage)
+m_seq <- seq(from = -2, to = 3, length.out = 30)
+post_mu <- link(model_waffle_divorce2, data = list(s_marriage = m_seq))
+post_mu_mean <- apply(post_mu, 2, mean)
+post_mu_PI <- apply(post_mu, 2, PI)
+
+post_mu_result_marriage <- tibble(
+    s_marriage = age_seq,
+    mu_mean = post_mu_mean,
+    mu_PI_05 = post_mu_PI[1,],
+    mu_PI_94 = post_mu_PI[2,],
+)
+
+# 그래프로 확인해보자
+p1 <- waffle_divorce %>% 
+    ggplot(aes(x = s_age)) +
+    geom_point(aes(y = s_divorce), color = '#1D4E89', alpha = 0.5) +
+    geom_line(data = post_mu_result, aes(y = mu_mean)) +
+    geom_ribbon(data = post_mu_result, aes(ymin = mu_PI_05, ymax = mu_PI_94),
+                fill = '#1D4E89', alpha = 0.5) +
+    labs(x = 'Median Age Marriage (std)', y = 'Divorce Rate (std)') +
+    theme_minimal(base_size = 20)
+
+p2 <- waffle_divorce2 %>% 
+    ggplot(aes(x = s_marriage)) +
+    geom_point(aes(y = s_divorce), color = '#1D4E89', alpha = 0.5) +
+    geom_line(data = post_mu_result_marriage, aes(y = mu_mean)) +
+    geom_ribbon(data = post_mu_result_marriage, aes(ymin = mu_PI_05, ymax = mu_PI_94),
+                fill = '#1D4E89', alpha = 0.5) +
+    labs(x = 'Marriage Rate (std)', y = 'Divorce Rate (std)') +
+    theme_minimal(base_size = 20)
+
+gridExtra::grid.arrange(p1, p2, ncol = 2)
+```
+
+![](fig/ch5_marriage_divorce_posterior_01.png)
+
+이러한 문제를 이해하기 위해서는 인과적으로 생각해야 한다. 
+
+## 5.1.1 Think before you regress
+
+현재 중요한 세 가지 변수가 있다. 
+
+- 이혼율 (D)
+- 결혼율 (M)
+- 중위 결혼 연령(A)
+
+변수들 사이의 관계를 잘 이해하기 위해서, DAG (Directed Acyclic Graph) 라고 불리는 그래프를 사용하는 것이 도움이 된다. 
+현재 DAG를 그려보면 다음과 같다. 이것은 몇 가지 내포하고 있는 내용이 있다. 
+`A -> M` 그리고 `M -> D` 로 연결되어 있기 때문에 결혼 연령은 이혼율에 두 가지 방식으로 영향을 준다.
+
+```
+A -> M
+A -> D
+M -> D
+```
+
+서로 다른 화살표의 영향을 추론하기 위해서는 하나 이상의 통계 모형이 필요하다. 
+`A` 를 통해 `D` 의 효과를 설명하는 회귀 모형을 만들면 모든 경로를 포함하는 전체 효과만을 알 수 있다. 
+하지만 지금 문제에서는 간접적인 경로는 거의 효과가 없다. 그걸 어떻게 증명할 수 있을까?
