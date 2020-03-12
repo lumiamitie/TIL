@@ -185,3 +185,117 @@ M -> D
 서로 다른 화살표의 영향을 추론하기 위해서는 하나 이상의 통계 모형이 필요하다. 
 `A` 를 통해 `D` 의 효과를 설명하는 회귀 모형을 만들면 모든 경로를 포함하는 전체 효과만을 알 수 있다. 
 하지만 지금 문제에서는 간접적인 경로는 거의 효과가 없다. 그걸 어떻게 증명할 수 있을까?
+
+## 5.1.2 Testable implications
+
+데이터를 통해 가능한 여러 인과 모형을 비교하려면 어떻게 해야 할까? 
+먼저 해야 할 일은 모형이 **내포하고 있는 것 중에서 테스트 가능한 내용(Testable implication)** 을 찾는 것이다. 
+DAG 중에서 어떤 경우에는 특정한 조건 하에서 변수들이 독립이 되는 경우가 있다. 
+이것을 **조건부 독립(Conditional Independence)** 이라고 하는데, 이것도 테스트 해볼만 한 항목이다.
+
+조건부 독립은 두 가지 형태로 구성되어 있다. 
+
+1. 어떤 변수들이 서로 연관되어 있고, 어떤 변수들이 연관되어 있지 않은지 나타낸다
+2. 일부 변수들이 특정한 조건을 만족할 때 변수 간의 연관성이 사라지는지 여부를 나타낸다
+
+수식으로는 다음과 같이 나타낸다.
+
+```
+Y ㅛ X|Z
+: 변수 Z의 값이 주어진다면 Y와 X 변수는 서로 연관이 없다 (독립이다)
+```
+
+조건부 독립 관계를 찾는 것은 어렵지는 않다. 잘 보이지는 않지만, 조금 연습하면 금방 찾을 수 있게 된다. 
+하지만 찾는 것이 어렵다면, `dagitty` 라이브러리를 사용해보자.
+
+```r
+library(dagitty)
+
+# 조건부 독립 관계가 없는 경우
+DMA_dag1 <- dagitty('dag{ D <- A -> M -> D }')
+impliedConditionalIndependencies(DMA_dag1)
+# 
+# -> 어디에 조건을 걸든지 모든 변수가 서로 관련이 있다
+
+# 조건부 독립 관계가 있는 경우
+DMA_dag2 <- dagitty('dag{ D <- A -> M }')
+impliedConditionalIndependencies(DMA_dag2)
+# D _||_ M | A
+# -> A값에 조건을 부여하면 (A값을 결정하면) D와 M은 서로 독립적이다
+```
+
+이러한 내용을 테스트 해보려면, A에 대해 조건부로 D와 M이 독립인지 확인해보면 된다. 
+그리고 여기서 다중 회귀 분석이 도움이 된다. 다음과 같은 질문을 다룰 수 있게 된다.
+
+> 다른 모든 예측 변수를 알고 있다면, 이 변수에 대해 더 알게 되었을 때 추가적인 가치가 있을까?
+
+## 5.1.3 Multiple regression notation
+
+결혼율과 결혼연령 변수를 모두 사용해서 이혼율을 예측하는 모형을 세워보면 다음과 같다.
+
+```
+D_i    ~ Normal(mu_i, sigma)                   -> Probability of data
+mu_i   = alpha + beta_M * M_i + beta_A * A_i   -> Linear model
+alpha  ~ Normal(0, 0.2)                        -> Prior for alpha
+beta_M ~ Normal(0, 0.5)                        -> Prior for beta_M
+beta_A ~ Normal(0, 0.5)                        -> Prior for beta_A
+sigma  ~ Exponential(1)                        -> Prior for sigma
+```
+
+## 5.1.4 Approximating the posterior
+
+이제 모형에 데이터를 넣고 학습시켜보자.
+
+```
+D_i    ~ Normal(mu_i, sigma)                   -> D ~ dnorm(mu, sigma)
+mu_i   = alpha + beta_M * M_i + beta_A * A_i   -> mu <- a + bM*M + bA*A
+alpha  ~ Normal(0, 0.2)                        -> a ~ dnorm(0, 0.2)
+beta_M ~ Normal(0, 0.5)                        -> bM ~ dnorm(0, 0.5)
+beta_A ~ Normal(0, 0.5)                        -> bA ~ dnorm(0, 0.5)
+sigma  ~ Exponential(1)                        -> sigma ~ dexp(1)
+```
+
+```r
+model_divorce_multiple <- quap(
+    alist(
+        s_divorce ~ dnorm(mu, sigma),
+        mu <- a + bM*s_marriage + bA*s_age,
+        a ~ dnorm(0, 0.2),
+        bM ~ dnorm(0, 0.5),
+        bA ~ dnorm(0, 0.5),
+        sigma ~ dexp(1)
+    ),
+    data = waffle_divorce2
+)
+
+precis(model_divorce_multiple)
+#        mean   sd  5.5% 94.5%
+# a      0.00 0.10 -0.16  0.16
+# bM    -0.07 0.15 -0.31  0.18
+# bA    -0.61 0.15 -0.85 -0.37
+# sigma  0.79 0.08  0.66  0.91
+```
+
+결혼율 파라미터의 posterior mean인 `bM` 이 0에 가까운 것을 볼 수 있다. 기울기 파라미터인 `bA` 와 `bM` 을 중심으로 세 모형을 비교해보자.
+
+- `bA` 의 경우 불확실성은 조금 달라졌지만 평균이 크게 변하지는 않았다
+- `bM` 의 경우 결혼 연령 변수가 모형에 없을 때만 이혼율과 관련이 있다
+- **특정 주의 중위 결혼연령을 알고 있다면, 해당 주의 결혼율 정보를 아는 것은 예측력에 큰 도움이 되지 않는다는** 것을 의미한다
+
+```r
+# 빠른 이해를 위해 모형 이름을 변경한다
+model_age = model_waffle_divorce
+model_marriage_rate = model_waffle_divorce2
+model_multiple = model_divorce_multiple
+
+coeftab(model_age, model_marriage_rate, model_multiple)
+#       model_age model_marriage_rate model_multiple
+# a           0         0                   0       
+# bA      -0.57        NA               -0.61       
+# sigma    0.79      0.91                0.79       
+# bM         NA      0.35               -0.07       
+# nobs       50        50                  50
+```
+
+이것은 결혼율 정보를 알아봤자 도움이 안된다는 이야기가 아니다. 
+이것은 **"결혼율"에서 "이혼율" 변수로 이어지는 직접적인 인과 관계가 없거나 거의 없다는 것을** 의미한다!
