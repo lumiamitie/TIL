@@ -299,3 +299,66 @@ coeftab(model_age, model_marriage_rate, model_multiple)
 
 이것은 결혼율 정보를 알아봤자 도움이 안된다는 이야기가 아니다. 
 이것은 **"결혼율"에서 "이혼율" 변수로 이어지는 직접적인 인과 관계가 없거나 거의 없다는 것을** 의미한다!
+
+## 5.1.5 Plotting multivariate posteriors
+
+예측 변수가 한 개일 때는 그래프로 간단히 그릴 수 있었지만, 두 개 이상의 예측 변수를 사용하게 되면 그래프를 더 많이 그려야 한다. 
+해석을 도와주는 세 가지 그래프를 살펴보자.
+
+1. Predictor residual plots
+    - 결과 변수와 잔차를 비교한다
+    - 통계 모형을 이해하는 데는 도움이 되지만, 다른 역할은 크게 없다
+2. Posterior prediction plots
+    - 원본 데이터와 모형을 통한 예측 결과를 비교한다
+    - 학습 및 예측 결과를 확인하기 위해 사용한다
+3. Counterfactual plots
+    - 가상의 실험에 대한 예측 결과를 보여준다
+    - 1개 이상의 변수에 대한 인과적인 영향을 확인하기 위해 사용한다
+
+### 5.1.5.1 Predictor residual plots
+
+예측 변수 잔차는 다른 모든 예측 변수로 특정 예측 변수를 설명하는 모형을 만들었을 때의 평균 오차를 의미한다. 
+이것을 계산하면 다른 모든 예측 변수들에 대해 통제(controlled)된 회귀 모형을 구할 수 있다는 장점이 있다. 
+이혼율 모형에서 우리는 2개의 예측 변수를 가지고 있다. 그 중 결혼율에 대해서 살펴본 다면, 다음과 같이 모형을 설정할 수 있다.
+
+```r
+model_M_from_A <- quap(
+    alist(
+        s_marriage ~ dnorm(mu, sigma),
+        mu <- a + bAM * s_age,
+        a ~ dnorm(0, 0.2),
+        bAM ~ dnorm(0, 0.5),
+        sigma ~ dexp(1)
+    ), 
+    data = waffle_divorce2
+)
+```
+
+이제 잔차(residuals)를 계산하기 위해서는 실제 결혼율에서 예측한 결혼율 값을 뺀다.
+
+```r
+mu_M_resid <- model_M_from_A %>% 
+    link() %>% 
+    apply(2, mean) %>% 
+    { waffle_divorce2$s_marriage - . }
+```
+
+이제 이 값을 이혼율 변수와 비교해보자. x축에 잔차, y축에 이혼율 변수로 그래프를 그린다. 
+이 그래프(좌측 그래프)는 결혼 연령 변수를 통제(controlled)했을 때, 이혼율과 결혼율 변수의 선형 관계를 보여준다. 
+
+```r
+# 아래에서 왼쪽 그래프를 그리기 위한 코드
+waffle_divorce2 %>% 
+    mutate(mu_M_resid = mu_M_resid) %>% 
+    ggplot(aes(x = mu_M_resid, y = s_divorce)) +
+    geom_point(size = 4, color = '#1D4E89', alpha = 0.5) +
+    geom_smooth(method = 'lm', color = '#1D4E89') +
+    labs(x = 'Marriage rate residuals', y = 'Divorce rate (std)') +
+    theme_minimal(base_size = 20)
+```
+
+![](fig/ch5_predictor_residual_plot_01.png)
+
+선형 회귀 모형은 변수들이 서로 연관되어 있는 것을 각 변수를 서로 더하는 형태로 표현한다. 
+하지만 예측 변수들은 더하기가 아닌 형태로 영향을 미치기도 한다. 이 경우에는 큰 틀에서는 동일하지만 세부적인 내용은 조금 달라질 수 있다. 
+이런 경우에는 모형을 파악하기 위해 다른 방법을 사용할 수 있다. 바로 다음에 나오는 내용을 사용한다.
