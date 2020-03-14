@@ -362,3 +362,48 @@ waffle_divorce2 %>%
 선형 회귀 모형은 변수들이 서로 연관되어 있는 것을 각 변수를 서로 더하는 형태로 표현한다. 
 하지만 예측 변수들은 더하기가 아닌 형태로 영향을 미치기도 한다. 이 경우에는 큰 틀에서는 동일하지만 세부적인 내용은 조금 달라질 수 있다. 
 이런 경우에는 모형을 파악하기 위해 다른 방법을 사용할 수 있다. 바로 다음에 나오는 내용을 사용한다.
+
+### 5.1.5.2 Posterior prediction plots
+
+모형의 예측 결과와 실제 값을 비교하는 작업도 중요하다. 이미 3장에서 했던 내용이지만, 여러모로 유용하게 사용할 수 있다. 여기서는 2가지 활용 방법에 집중한다.
+
+1. 모형이 Posteior 분포를 제대로 학습했을까?
+2. 모형이 어떤 부분에서 어떻게 실패하는가?
+
+이혼율 예제에서 Posterior predictive check를 수행하려면 어떻게 해야 할까? 코드를 통해 살펴보자. 
+먼저 예측 결과를 시뮬레이션하고, posterior의 평균을 구한다.
+
+```r
+# link 함수를 사용할 때 새로운 데이터를 명시하지 않으면 기존 데이터를 사용한다
+mu_obs <- link(model_multiple)
+# 샘플링 결과를 필요에 따라 요약한다
+mu_obs_mean <- apply(mu_obs, 2, mean)
+mu_obs_PI <- apply(mu_obs, 2, PI)
+
+# 관측치를 시뮬레이션한다
+# 여기서도 새로운 데이터를 적용하지 않으면 기존 데이터를 사용한다
+D_obs_sim <- sim(model_multiple, n = 1e4)
+D_obs_PI <- apply(D_obs_sim, 2, PI)
+```
+
+다변량 모형에서는 시뮬레이션 결과를 시각화하는 방법이 여러 가지 존재할 수 있다. 역시 가장 간단한 방법은 관측치와 예측치를 비교하는 것이다.
+
+```r
+waffle_divorce2 %>% 
+    mutate(mu_obs_mean = mu_obs_mean,
+            mu_obs_PI_05 = mu_obs_PI[1,],
+            mu_obs_PI_94 = mu_obs_PI[2,]) %>% 
+    ggplot(aes(x = s_divorce, y = mu_obs_mean)) +
+    geom_abline(slope = 1, intercept = 0, color = 'orange', linetype = 2) +
+    geom_point(size = 3, color = '#1D4E89', shape = 21) +
+    geom_errorbar(aes(ymin = mu_obs_PI_05, ymax = mu_obs_PI_94), color = '#1D4E89') +
+    geom_text(aes(label = if_else(as.character(Loc) %in% c('ID', 'UT', 'RI', 'ME'), as.character(Loc), '')), nudge_x = -0.07) +
+    labs(x = 'Observed Divorce', y = 'Predicted Divorce') +
+    theme_minimal(base_size = 16)
+```
+
+![](fig/ch5_posterior_pred_plot.png)
+
+Idaho 와 Utah 주는 왜 예측치와 차이가 클까? 
+두 주에는 예수 그리스도 후기 성도 교회(the Church of Jesus Christ of Latter-day Saints)의 신도들이 많다. 
+여기 신도들은 어디에 살든 대체로 낮은 이혼율을 보인다. 이렇게 결혼 연령 이외의 다른 변수들을 주의깊게 살펴보면 현상을 이해하는데 도움이 되는 경우가 있다.
