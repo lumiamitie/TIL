@@ -407,3 +407,180 @@ waffle_divorce2 %>%
 Idaho 와 Utah 주는 왜 예측치와 차이가 클까? 
 두 주에는 예수 그리스도 후기 성도 교회(the Church of Jesus Christ of Latter-day Saints)의 신도들이 많다. 
 여기 신도들은 어디에 살든 대체로 낮은 이혼율을 보인다. 이렇게 결혼 연령 이외의 다른 변수들을 주의깊게 살펴보면 현상을 이해하는데 도움이 되는 경우가 있다.
+
+### 5.1.5.3 Counterfactual plots
+
+모형이 내포하는 예측 결과를 확인할 수 있는 또 한 가지 방법으로 **Counterfactual plots** 가 있다. 
+관측된 적이 없거나 불가능한 조합에 대해서도 그려볼 수 있기 때문에 저런 이름을 붙이게 되었다. 
+특성상 말이 되지 않는 조합을 그리지 않도록 조심해야 하지만, 잘 사용하면 가상의 개입에 대한 예측을 생성하고 모형을 이해하는데 도움이 된다. 
+Counterfactual plot의 가장 단순한 사용법은 변수 중 하나의 값을 바꾸었을 때 예측값이 어떻게 변하는지를 확인하는 것이다. 
+
+다음과 같은 방식으로 그래프를 그릴 수 있다.
+
+1. 값을 변경하려는 변수를 선택한다 (intervention variable)
+2. intervention variable 의 값이 어디까지 변경될 수 있을지 구간을 설정한다
+3. intervention variable 의 각 값에 대해서, 그리고 posterior의 각 샘플에 대해 인과 모형을 통해 결과를 포함한 다른 변수들의 값을 시뮬레이션한다
+
+A의 M에 대한 효과를 추정하려면, A의 M에 대한 회귀모형을 구성해야 한다. DAG 상에서 A와 M 사이에는 그 외에 다른 변수가 없기 때문이다. 
+`quap` 함수를 통해 두 개의 회귀 모형을 동시에 수행해보자.
+
+```r
+model_multiple_A <- quap(
+    alist(
+        ## A -> D <- M
+        s_divorce ~ dnorm(mu, sigma),
+        mu <- a + bM*s_marriage + bA*s_age,
+        a ~ dnorm(0, 0.2),
+        bM ~ dnorm(0, 0.5),
+        bA ~ dnorm(0, 0.5),
+        sigma ~ dexp(1),
+
+        ## A -> M
+        s_marriage ~ dnorm(mu_M, sigma_M),
+        mu_M <- aM + bAM*s_age,
+        aM ~ dnorm(0, 0.2),
+        bAM ~ dnorm(0, 0.5),
+        sigma_M ~ dexp(1)
+    ),
+    data = waffle_divorce2
+)
+```
+
+모형의 학습 결과를 살펴보자. M과 A 변수가 강하게 음의 상관관계로 연결되어 있는 것을 볼 수 있다. 만약에 우리가 이것을 인과 관계로 해석한다면, A값을 증가시킬 때 M 값이 줄어들 것이라고 생각할 수 있다.
+
+```r
+precis(model_multiple_A)
+#          mean   sd  5.5% 94.5%
+# a        0.00 0.10 -0.16  0.16
+# bM      -0.07 0.15 -0.31  0.18
+# bA      -0.61 0.15 -0.85 -0.37
+# sigma    0.79 0.08  0.66  0.91
+# aM       0.00 0.09 -0.14  0.14
+# bAM     -0.69 0.10 -0.85 -0.54
+# sigma_M  0.68 0.07  0.57  0.79
+```
+
+이제 시뮬레이션을 통해 A값을 변경했을 때 어떻게 변할지 살펴보자. 
+
+```r
+# A변수의 30개 지점을 생성한다
+sim_data <- tibble(s_age = seq(from = -2, to = 2, length.out = 30))
+
+# 위에 생성한 A 변수를 통해 M, D 변수를 시뮬레이션한다
+sim_result <- sim(
+    model_multiple_A, 
+    data = sim_data, 
+    vars = c('s_marriage','s_divorce')
+)
+
+# 그래프를 그리기 위한 결과값을 추려서 데이터프레임을 생성한다
+counterfactual_result <- tibble(
+    age_manipulated = sim_data$s_age,
+    divorce_counterfactual = colMeans(sim_result$s_divorce),
+    divorce_PI_05 = apply(sim_result$s_divorce, 2, PI)[1,],
+    divorce_PI_94 = apply(sim_result$s_divorce, 2, PI)[2,],
+)
+
+# 그래프를 그려서 확인한다
+ggplot(counterfactual_result, aes(x = age_manipulated)) +
+    geom_line(aes(y = divorce_counterfactual), color = '#1D4E89') +
+    geom_ribbon(aes(ymin = divorce_PI_05, ymax = divorce_PI_94), fill = '#1D4E89', alpha = 0.5) +
+    labs(x = 'Age (Manipulate)', y = 'Divorce (Counterfactual)',
+        title = 'Total Counterfactual Effect of "Age" on "Divorce rate"') +
+    theme_minimal(base_size = 16)
+```
+
+![](fig/ch5_counterfactual_plot_01.png)
+
+위 그래프에서 D 값의 추이는 2개의 경로를 의미한다.
+
+- A → D
+- A → M → D
+
+이 중에서 M → D 의 효과가 매우 작다는 것을 이전에 확인했기 때문에, 두 번째 경로는 큰 영향을 미치지 못한다. 
+하지만 만약 M이 D에 큰 영향을 미치는 상황이라면 위 그래프에도 해당 내용이 포함될 것이다. 
+코드에서 생성한`sim_result` 변수에는 M 변수의 시뮬레이션 결과까지 포함되어 있기 때문에 필요하면 확인해보자.
+
+Counterfactual 에서 사용하는 트릭은 어떤 변수 X의 값을 임의로 변경할 때, 다른 변수들이 X에 미치는 인과적인 영향을 무너뜨리게 된다는 것을 깨닫는 것이다. 
+다시 말해 어떤 화살표도 X를 향하지 않도록 DAG를 수정하면 된다. M 변수 값을 변화시킬 때 영향을 파악하려 한다면 다음과 같이 DAG를 수정해야 한다.
+
+```
+A -> D
+M -> D
+```
+
+화살표 `A → M` 이 제거되었다. 왜냐면 우리가 M 값을 임의로 변경한다는 것은, A가 더이상 M 변수에 영향을 미치지 못한다는 것을 의미하기 때문이다. 
+이건 마치 완벽하게 통제된 실험과 비슷한 상황이 된다. 이번에는 평균적인 연령대, 즉 `A=0` 인 주에서 M 변수가 변하면 어떤 영향이 있을지 시뮬레이션 해보자.
+
+```r
+# 시뮬레이션을 위한 데이터를 생성한다
+# * M은 확인하려는 구간 내에 30개 데이터를 생성
+# * A는 0으로 고정
+sim_data <- tibble(
+    s_marriage = seq(from = -2, to = 2, length.out = 30),
+    s_age = 0
+)
+
+# 시뮬레이션 결과를 생성한다 (D변수만 생성한다)
+sim_result <- sim(
+    model_multiple_A, 
+    data = sim_data, 
+    vars = c('s_divorce')
+)
+
+# 그래프를 그리기 위한 결과값을 추려서 데이터프레임을 생성한다
+counterfactual_result <- tibble(
+    marriage_manipulated = sim_data$s_marriage,
+    divorce_counterfactual = colMeans(sim_result),
+    divorce_PI_05 = apply(sim_result, 2, PI)[1,],
+    divorce_PI_94 = apply(sim_result, 2, PI)[2,],
+)
+
+# 그래프를 그려서 확인한다
+ggplot(counterfactual_result, aes(x = marriage_manipulated)) +
+    geom_line(aes(y = divorce_counterfactual), color = '#1D4E89') +
+    geom_ribbon(aes(ymin = divorce_PI_05, ymax = divorce_PI_94), fill = '#1D4E89', alpha = 0.5) +
+    labs(x = 'Marriage (Manipulate)', y = 'Divorce (Counterfactual)',
+        title = 'Total Counterfactual Effect of "Marriage" on "Divorce rate"') +
+    theme_minimal(base_size = 16)
+```
+
+![](fig/ch5_counterfactual_plot_02.png)
+
+그래프로 확인한 결과 효과가 크지 않은 것으로 보인다. 앞에서 살펴본 대로, M의 D에 대한 효과는 크다고 보기 어렵다는 것을 알 수 있다.
+
+가능한 경로가 더 많은 복잡한 모형에서도 비슷한 방식으로 그래프를 그려볼 수 있다. 
+하지만 종종 계산하는 것이 불가능할 때가 있는데, 그러한 경우에도 고민해볼 만한 방식들이 있다. 이 부분에 대해서는 나중에 다루어보자.
+
+**참고. Counterfactual 시뮬레이션하기**
+
+위 예제에서는 `sim` 함수를 사용하고 자세한 내용은 설명하지 않았다. 하지만 다음과 같이 직접 구현할 수 있다.
+
+```r
+# (1) Age 변수에 할당하고자 하는 값의 범위를 입력한다
+A_manipulated <- seq(from = -2, to = 2, length.out = 30)
+
+# (2) Posterior 샘플링 결과를 추출한다
+# * 여기서 사용하는 모형에는 Marriage 변수의 분포가 정의되어 있다
+# * 따라서 rnorm 함수를 통해 시뮬레이션을 위한 함수를 직접 구현한다
+posterior_samples <- extract.samples(model_multiple_A)
+M_simulated <- with(posterior_samples, sapply(1:30, function(i) {
+    rnorm(1e3, aM + bAM*A_manipulated[i], sigma_M)
+}))
+
+# (3) 시뮬레이션을 통해 Divorce 변수를 생성한다
+D_simulated <- with(posterior_samples, sapply(1:30, function(i) {
+    rnorm(1e3, a + bA*A_manipulated[i] + bM*M_simulated[,i], sigma)
+}))
+
+# (4) 그래프를 통해 확인해보면 위에서 그린 것과 동일한 그래프를 확인할 수 있다
+tibble(
+    A_manipulated = A_manipulated,
+    D_sim = colMeans(D_simulated),
+    D_sim_PI_05 = apply(D_simulated, 2, PI)[1,],
+    D_sim_PI_94 = apply(D_simulated, 2, PI)[2,],
+) %>% 
+    ggplot(aes(x = A_manipulated)) +
+    geom_line(aes(y = D_sim)) +
+    geom_ribbon(aes(ymin = D_sim_PI_05, ymax = D_sim_PI_94), alpha = 0.5)
+```
