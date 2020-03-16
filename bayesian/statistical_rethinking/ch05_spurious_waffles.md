@@ -584,3 +584,160 @@ tibble(
     geom_line(aes(y = D_sim)) +
     geom_ribbon(aes(ymin = D_sim_PI_05, ymax = D_sim_PI_94), alpha = 0.5)
 ```
+
+# 5.2 Masked Relationship
+
+이혼율 예제는 여러 개의 예측 변수를 사용한 모델링이 가짜 상관 관계를 걸러내는데 도움이 된다는 것을 알려준다. 
+여러 개의 예측 변수를 사용하는 것이 좋은 또 다른 이유는, 각각의 변수들이 가지는 효과가 명확하지 않을 때 여러 요인들로 인해 발생하는 효과를 측정할 수 있기 때문이다.
+이러한 문제는 여러 변수들이 서로 연관되어 있을 때 종종 발생한다. 
+
+새로운 데이터를 통해 확인해보자.
+
+```r
+data('milk', package = 'rethinking')
+# kcal.per.g     : 1g 당 에너지 (kcal)
+# mass           : 여성의 평균 체중 (kg)
+# neocortex.perc : 전체 뇌에서 대뇌 신피질이 차지하는 비중 (%)
+
+# 위 세 가지 변수를 표준화한다
+milk_data <- milk %>% 
+    as_tibble() %>% 
+    mutate(K = scale(kcal.per.g)[,1],
+            N = scale(neocortex.perc)[,1],
+            M = scale(log(mass))[,1])
+```
+
+첫 번째 모형은 kcal과 neocortex 사이의 간단한 회귀 모형이다. 그런데 코드를 돌려보면 다음과 같은 에러가 발생한다. 
+`N` 변수에 있는 NA 값 떄문에 초기 확률 값을 설정하지 못해서 발생하는 문제다.
+
+```r
+m_kn <- quap(
+    alist(
+        K ~ dnorm(mu, sigma),
+        mu <- a + bN*N,
+        a ~ dnorm(0, 0.2),
+        bN ~ dnorm(0, 0.5),
+        sigma ~ dexp(1)
+    ), 
+    data = milk_data
+)
+# Error in quap(alist(K ~ dnorm(mu, sigma), mu <- a + bN * N, a ~ dnorm(0,  : 
+#   initial value in 'vmmin' is not finite
+# The start values for the parameters were invalid. 
+# This could be caused by missing values (NA) in the data or by start values outside the parameter constraints. 
+# If there are no NA values in the data, try using explicit start values.
+```
+
+이러한 문제를 처리하는 간단한 방법이 있다. 바로 결측치가 존재하는 모든 경우를 제거하는 것이다. 
+이것을 보통 **Complete Case Analysis** 라고 한다. 이렇게 하는 것이 항상 좋은 것은 아니지만, 지금은 그냥 해보자. 
+
+```r
+# K, N, M 변수 중에서 NA값이 없는 항목만 추출한다
+milk_cc <- milk_data %>% 
+    filter(complete.cases(K, N, M))
+
+# 다시 모델링해본다. 이번에는 에러 없이 잘 된다.
+m_kn <- quap(
+    alist(
+        K ~ dnorm(mu, sigma),
+        mu <- a + bN*N,
+        a ~ dnorm(0, 0.2),
+        bN ~ dnorm(0, 0.5),
+        sigma ~ dexp(1)
+    ), 
+    data = milk_cc
+)
+```
+
+Posterior 결과를 살펴보자. 상관 관계가 강하지도 않고, 정확하지도 않다는 것을 알 수 있다. 
+
+```r
+precis(m_kn)
+#       mean   sd  5.5% 94.5%
+# a     0.04 0.15 -0.21  0.29
+# bN    0.13 0.22 -0.22  0.49
+# sigma 1.00 0.16  0.74  1.26
+```
+
+비슷한 모형을 체중 변수를 사용해서 만들어보자. log(체중) 변수는 kcal 변수와 음의 상관관계를 가진다. 게다가 neocortex 변수와 비교했을 때 영향이 더 큰 것으로 보인다. 
+
+```r
+# kcal ~ Mass
+m_km <- quap(
+    alist(
+        K ~ dnorm(mu, sigma),
+        mu <- a + bM*M ,
+        a ~ dnorm(0, 0.2),
+        bM ~ dnorm(0, 0.5),
+        sigma ~ dexp(1)
+    ),
+    data = milk_cc
+)
+
+precis(m_km)
+#        mean   sd  5.5% 94.5%
+# a      0.05 0.15 -0.20  0.29
+# bM    -0.28 0.19 -0.59  0.03
+# sigma  0.95 0.16  0.70  1.20
+```
+
+이번에는 두 예측 변수를 동시에 사용했을 때 어떻게 변하는지 살펴보자.
+
+```r
+# kcal ~ Neocortex + Mass
+m_knm <- quap(
+    alist(
+        K ~ dnorm(mu, sigma),
+        mu <- a + bN*N + bM*M ,
+        a ~ dnorm(0, 0.2),
+        bN ~ dnorm(0, 0.5),
+        bM ~ dnorm(0, 0.5),
+        sigma ~ dexp(1)
+    ),
+    data = milk_cc
+)
+
+precis(m_knm)
+#        mean   sd  5.5% 94.5%
+# a      0.07 0.13 -0.15  0.28
+# bN     0.68 0.25  0.28  1.07
+# bM    -0.70 0.22 -1.06 -0.35
+# sigma  0.74 0.13  0.53  0.95
+```
+
+각 모형의 효과 추정치를 비교해보자. N, M 변수 각각 따로 모델링햇을 때는 효과가 그다지 크지 않은 것으로 추정되었는데, 
+두 변수를 모두 사용하여 모델링하니 두 변수의 효과가 모두 급격하게 증가한 것을 볼 수 있다. 
+
+```r
+plot(coeftab(m_kn, m_km, m_knm), pars = c('bN', 'bM'))
+```
+
+![](fig/ch5_milk_var_effect_01.png)
+
+왜 이런 일이 발생하는 걸까? 두 변수 모두 결과 변수와 상관 관계가 존재하는데, 하나는 양의 상관관계가 있고 또 하나는 음의 상관관계가 있기 때문에 이런 결과가 나타났다. 
+게다가 두 예측 변수는 서로 높은 양의 상관관계가 존재한다. 그 결과 두 예측 변수가 서로의 효과를 상쇄시키는 결과가 나타난다. 
+이번 문제도 다중 회귀 모형을 통해 명확하게 효과를 추정할 수 있다는 것을 보여주는 사례다. 
+
+DAG를 통해 살펴보자. 이런 패턴에는 적어도 세 가지의 그래프가 적용될 수 있다.
+
+```
+(1)
+M    ->   N
+M -> K <- N
+
+(2)
+M    <-   N
+M -> K <- N
+
+(3) Unobserved Variable 'U'
+M <- U -> N
+M -> K <- N
+```
+
+이 중에 어떤 그래프가 정답일까? 데이터만으로는 알 수 없다. 왜냐면 세 그래프 모두 동일한 조건부 독립 관계로 이루어져 있기 때문이다. 
+동일한 조건부 독립 관계를 나타내는 DAG 집합을 **Markov Equivalence** 집합이라고 한다. 
+데이터 만으로는 어떤 인과 모형이 맞는지 알 수 없지만, 각 변수에 대한 과학적인 지식을 바탕으로 상당수의 말이 되지 않는 DAG를 제거할 수 있다. 
+
+마지막으로 모형을 통해 해야하는 작업은 Counterfactual plot을 그려보는 것이다. 
+여러 개의 예측 변수가 존재할 때, 다른 변수들이 고정되어 있다고 가정하고 가상의 실험을 수행해 볼 수 있다. 
+실제 세계에서 이러한 실험은 불가능하다. 하지만 이러한 그래프를 통해 모형이 변수간의 관계를 어떻게 구성하고 있는지 이해하는데 도움이 된다.
