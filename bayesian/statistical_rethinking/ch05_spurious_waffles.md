@@ -741,3 +741,131 @@ M -> K <- N
 마지막으로 모형을 통해 해야하는 작업은 Counterfactual plot을 그려보는 것이다. 
 여러 개의 예측 변수가 존재할 때, 다른 변수들이 고정되어 있다고 가정하고 가상의 실험을 수행해 볼 수 있다. 
 실제 세계에서 이러한 실험은 불가능하다. 하지만 이러한 그래프를 통해 모형이 변수간의 관계를 어떻게 구성하고 있는지 이해하는데 도움이 된다.
+
+# 5.3 Categorical Variables
+
+통계적인 방법론에서 자주 다루게 되는 주제 중 하나는 특정한 카테고리의 존재 여부에 따라 결과가 얼마나 바뀌는지 알아내는 것이다. 
+여기서 카테고리는 이산적이며 순서가 없는 것을 말한다. 
+
+## 5.3.1 Binary Categories
+
+아래 데이터에서 `male` 변수는 카테고리를 수치형 변수처럼 사용하기 위한 지시 변수(Indicator Variable, 또는 Dummy Variable)이다. 
+
+```r
+data('Howell1', package = 'rethinking')
+str(Howell1)
+# 'data.frame':	544 obs. of  4 variables:
+#  $ height: num  152 140 137 157 145 ...
+#  $ weight: num  47.8 36.5 31.9 53 41.3 ...
+#  $ age   : num  63 63 65 41 51 35 32 27 19 54 ...
+#  $ male  : int  1 0 0 1 0 1 0 1 0 1 ...
+```
+
+지시 변수를 모델링에서 활용하는 방법은 크게 두 가지가 있다.
+
+1. 지시변수를 모형 내에서 수치형 변수인 것처럼 직접 사용한다
+    - 동일한 alpha 값이 여러 카테고리에 모두 적용되어야 하기 때문에, **alpha 값에 적당한 prior를 배치하는 것이 어렵다**
+    - **beta** 파라미터는 **해당 카테고리의 여부에 따른 차이를** 의미하게 된다
+    - 이 방식을 쓸 경우 **특정 카테고리 (여기서는 male인 경우)의 불확실성이 더 커진다**
+        - 왜냐면 남성의 경우에는 추정하는데 2개의 파라미터가 필요하기 때문!
+2. Index 변수로 사용한다
+    - 2개 이상의 카테고리에도 쉽게 적용할 수 있다
+    - alpha 파라미터를 카테고리 개수만큼 만들고, 각각의 파라미터에 prior를 설정한다
+
+```
+(1) Indicator Variable
+h_i    ~ Normal(mu_i, sigma)
+mu_i  <- alpha + beta_m * m_i     m_i = 1 or 0
+alpha  ~ Normal(178, 20)
+beta_m ~ Normal(0, 10)
+sigma  ~ Uniform(0, 50)
+
+(2) Index Variable
+h_i     ~ Normal(mu_i, sigma)
+mu_i   <- alpha_{SEX[i]}
+alhpa_j ~ Normal(178, 20)         for j=1,2
+sigma   ~ Uniform(0, 50)
+```
+
+R 코드를 통해 확인해보자. 두 카테고리 모두 비슷한 불확실성 범위를 보이는 것을 볼 수 있다.
+
+```r
+# 여성이면 1, 남성이면 2가 되도록 index variable을 추가한다
+howell_indexed <- Howell1 %>% 
+    as_tibble() %>% 
+    mutate(sex = if_else(male == 1, 2, 1))
+
+# 모형을 통해 Posterior를 근사한다
+m_hs_index <- quap(
+    alist(
+        height ~ dnorm(mu, sigma),
+        mu <- a[sex],
+        a[sex] ~ dnorm(178, 20),
+        sigma ~ dunif(0, 50)
+    ),
+    data = howell_indexed
+)
+
+# 파라미터 학습 결과를 확인한다
+# * depth=2 옵션을 통해 벡터 파라미터를 모두 표시하도록 한다
+precis(m_hs_index, depth = 2)
+#         mean   sd   5.5%  94.5%
+# a[1]  134.91 1.61 132.34 137.48
+# a[2]  142.58 1.70 139.87 145.29
+# sigma  27.31 0.83  25.99  28.63
+```
+
+파라미터를 해석하는 것도 어렵지 않다. a 벡터는 각 카테고리별 기대값을 의미한다. 
+그러면 카테고리별 차이는 어떻게 구할 수 있을까? Posterior 샘플링 결과를 통해 계산할 수 있다.
+
+```r
+posterior_samples <- extract.samples(m_hs_index)
+posterior_samples$diff_fm <- with(posterior_samples, a[,1] - a[,2])
+
+precis(posterior_samples, depth = 2)
+# quap posterior: 10000 samples from m_hs_index
+#           mean   sd   5.5%  94.5%     histogram
+# sigma    27.31 0.82  25.98  28.64 ▁▁▁▁▃▇▇▇▃▂▁▁▁
+# a[1]    134.89 1.64 132.27 137.52 ▁▁▁▁▂▅▇▇▅▂▁▁▁
+# a[2]    142.58 1.72 139.88 145.34      ▁▁▅▇▃▁▁▁
+# diff_fm  -7.69 2.38 -11.46  -3.88   ▁▁▁▁▃▇▇▃▁▁▁
+```
+
+계산 결과가 새로운 파라미터인 것처럼 나타난다. 이것은 샘플에서 남성과 여성의 키 차이 기대값을 나타낸다. 
+
+## 5.3.2 Many Categories
+
+카테고리 항목의 개수가 2개일 때는 어떤 방식을 쓰든 어렵지 않지만, 카테고리 수가 많아지면 지시 변수로는 감당하기가 어려워진다. 
+`k` 개의 카테고리가 존재한다면 `k-1` 개의 지시 변수가 필요하다. R에서는 이러한 작업을 자동으로 처리해주지만, 여기서는 Index 변수를 사용하도록 한다. 
+
+milk 데이터를 다시 살펴보자. 이번에는 각 종의 분류체계를 나타내는 `clade` 변수에 주목해보자.
+
+```r
+data('milk', package = 'rethinking')
+
+# clade 값으로 인덱스 변수를 생성한다
+milk_indexed <- milk %>% 
+    as_tibble() %>% 
+    mutate(clade_id = as.integer(clade),
+            K = scale(kcal.per.g)[,1])
+
+# 모형을 통해 Posterior를 근사한다
+m_milk_kc <- quap(
+    alist(
+        K ~ dnorm(mu, sigma),
+        mu <- a[clade_id],
+        a[clade_id] ~ dnorm(0, 0.5),
+        sigma ~ dexp(1)
+    ), 
+    data = milk_indexed
+)
+
+# 그래프를 통해 확인해보자
+plot(
+    precis(m_milk_kc, depth = 2, pars = 'a'), 
+    labels = map2_chr(1:4, levels(milk_indexed$clade), ~ glue::glue('a[{.x}]: {.y}')), 
+    xlab = 'Expected kcal (std)'
+)
+```
+
+![](fig/ch5_many_categories_01.png)
