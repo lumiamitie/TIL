@@ -151,3 +151,115 @@ precis(m_leg_02)
 ```
 
 이번 예제는 상당히 명확하지만 심각한 인과적인 문제를 다루고 있지는 않다. 다음은 더 흥미로운 예제를 살펴보자.
+
+## 6.1.2 Multicollinear milk
+
+다리 길이 문제에서는 두 변수를 동시에 사용하는 것이 이상하다는 것을 쉽게 알 수 있었다. 
+하지만 실제 데이터에서는 상관관계가 높은 두 변수가 충돌할 것이라 예상하지 못한다는 것이 문제다. 
+결국 우리는 posterior 분포를 잘못 해석하게 되어 두 변수가 모두 중요하지 않다는 결론을 내리게 될 것이다.
+
+다시 이전 장의 `milk` 데이터로 돌아가보자.
+
+```r
+data('milk', package = 'rethinking')
+# kcal.per.g   : total energy content
+# perc.fat     : percent fat
+# perc.lactose : percent lactose
+# * perc.fat 과 perc.lactose 두 변수는 높은 음의 상관관계를 보인다
+
+milk_data <- milk %>% 
+    as_tibble() %>% 
+    mutate(K = scale(kcal.per.g)[,1],
+           F = scale(perc.fat)[,1],
+           L = scale(perc.lactose)[,1])
+```
+
+`kcal.per.g` 변수가 `perc.fat` 과 `perc.lactose` 에 대한 함수인 것처럼 모형을 구성해보자. 우선은 각각의 단일 회귀모형을 구한다.
+
+```r
+# kcal.per.g ~ perc.fat
+m_milk_kf <- quap(
+    alist(
+        K ~ dnorm(mu, sigma),
+        mu <- a + bF*F,
+        a ~ dnorm(0, 0.2),
+        bF ~ dnorm(0, 0.5),
+        sigma ~ dexp(1)
+    ),
+    data = milk_data
+)
+
+# kcal.per.g ~ perc.lactose
+m_milk_kl <- quap(
+    alist(
+        K ~ dnorm(mu, sigma),
+        mu <- a + bL*L ,
+        a ~ dnorm(0, 0.2),
+        bL ~ dnorm(0, 0.5),
+        sigma ~ dexp(1)
+    ),
+    data = milk_data
+)
+
+precis(m_milk_kf)
+#       mean   sd  5.5% 94.5%
+# a     0.00 0.08 -0.12  0.12
+# bF    0.86 0.08  0.73  1.00
+# sigma 0.45 0.06  0.36  0.55
+
+precis(m_milk_kl)
+#        mean   sd  5.5% 94.5%
+# a      0.00 0.07 -0.11  0.11
+# bL    -0.90 0.07 -1.02 -0.79
+# sigma  0.38 0.05  0.30  0.46
+```
+
+`perc.fat` 이 높아지면 `kcal.per.g` 도 높아진다. `perc.lactose` 가 높아지면 `kcal.per.g` 가 낮아진다는 모델링 결과를 볼 수 있다. 
+그런데 두 변수를 모두 모형에 넣으면 어떻게 될까?
+
+```r
+# kcal.per.g ~ perc.fat + perc.lactose
+m_milk_kfl <- quap(
+    alist(
+        K ~ dnorm(mu, sigma),
+        mu <- a + bF*F + bL*L,
+        a ~ dnorm(0, 0.2),
+        bF ~ dnorm(0, 0.5),
+        bL ~ dnorm(0, 0.5),
+        sigma ~ dexp(1)
+    ),
+    data = milk_data
+)
+
+precis(m_milk_kfl)
+#        mean   sd  5.5% 94.5%
+# a      0.00 0.07 -0.11  0.11
+# bF     0.24 0.18 -0.05  0.54
+# bL    -0.68 0.18 -0.97 -0.38
+# sigma  0.38 0.05  0.30  0.46
+```
+
+이제 `bF` 와 `bL` 모두 posterior mean 값이 이전보다는 0에 가까워진 것을 볼 수 있다. 
+그리고 표준 편차가 거의 두 배 가량 늘었다. 이 현상은 다리 길이 예제와 동일한 통계적 현상을 나타낸다. 
+
+다중공선성을 다루기 위한 여러 가지 방법들이 언급되는데, 인과적인 측면에서 다루는 내용은 드물다. 
+각 변수 쌍의 상관계수를 보는 것은 적절하지 않다. 문제가 되는 쪽은 상관계수가 아니라 조건부 관계다. 
+
+모유 수유를 자주 하는 종의 모유는 묽고 에너지가 적다. 이런 경우는 당(lactose)이 많아진다. 
+모유 수유를 자주 하지 않는 종의 경우 에너지가 더 풍부해야 한다. 그런 경우는 지방(fat)이 풍부해진다. 
+이런 현상은 다음과 같은 인과 모형으로 이어진다.
+
+```
+L <- (D) -> F
+L -> K
+F -> K
+```
+
+가장 중심이 되는 트레이드오프는 모유가 얼마나 진한지 (dense) 여부를 나타내는 변수가 결정한다. 
+우리는 이 변수를 관찰하지 않았기 때문에 원으로 표현한다. 만약 D 변수를 관찰했다면 바로 K 변수에 대한 회귀모형을 구성해서 인과적인 효과를 추정할 수 있었을 것이다. 
+
+다중공선성은 모델링 문제 중에서 **비식별성(Non-Identifiability)** 문제에 속한다. 
+어떤 파라미터가 식별 불가능하다면 데이터와 모형이 해당 파라미터의 값을 추정할 수 없다는 것이다. 
+일반적으로는 현재 데이터가 관심있는 파라미터에 대한 정보를 충분히 담고 있다는 보장이 없다. 
+정보를 충분히 담고 있지 않다면, prior와 매우 비슷한 posterior 를 반환할 것이다. 
+따라서 모형이 데이터로부터 정보를 얼마나 끌어내느냐를 본다는 점에서, prior와 posterior를 비교하는 작업은 좋은 방법이다.
