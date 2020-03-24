@@ -388,3 +388,63 @@ precis(m_plant_htf)
 왜냐면 토양의 처리 결과는 곰팡이를 방지하는 형태로 식물의 성장에 영향을 미치기 때문이다. 
 하지만 우리가 실험을 통해 알고자 하는 것은 토양이 식물의 성장에 미치는 영향이다. 
 이것을 제대로 추정하기 위해서는 `fungus` 같은 post-treatment 변수를 모형에서 제거해야 한다.
+
+```r
+m_plant_ht <- quap(
+    alist(
+        h1 ~ dnorm(mu, sigma),
+        mu <- h0 * p,
+        p <- a + bt*treatment,
+        a ~ dlnorm(0, 0.2),
+        bt ~ dnorm(0, 0.5),
+        sigma ~ dexp(1)
+    ),
+    data = sim_plant
+)
+
+precis(m_plant_ht)
+#       mean   sd 5.5% 94.5%
+# a     1.33 0.02 1.29  1.37
+# bt    0.11 0.03 0.06  0.17
+# sigma 1.77 0.12 1.57  1.96
+```
+
+이제 토양에 곰팡이 방지 처리를 하는 것이 식물의 성장에 효과적인 것으로 제대로 나타난다. 
+식물의 초기 높이인 h0 처럼 인과적 영향을 추정하는데 영향을 미칠 수 있는 요소들은 통제하는 것이 합리적이다. 
+그런데 post-treatment 변수를 포함해버리면 treatment의 효과 자체를 가려버릴 수 있다. 
+
+## 6.2.3 Fungus and d-separation
+
+DAG의 형태로 문제를 살펴보는 것이 도움이 된다.
+
+```
+H0 -> H1 <- F <- T
+
+* H0 : plant height at time 0
+* H1 : plant height at time 1
+```
+
+현재 모형이 F 변수를 포함할 경우, treatment가 결과 변수에 영향을 미치는 경로를 막아버린다. 
+이것은 곰팡이가 피었는지 여부를 알고 있는 한은 treatment의 정보를 아는 것이 결과 변수에 영향을 미치지 못한다는 것을 의미한다.
+
+DAG를 중심으로 이야기하면, F 변수에 조건을 부여하는 경우 **d-separation** 이 발생한다. 
+d-separation 은 DAG 상의 어떤 변수들이 다른 변수들에 대해 독립이라는 것을 말한다. 서로를 이어주는 경로가 없는 것이다. 
+여기서는 **F를 알고 있을 때 H1이 T로부터 d-separated** 되어 있다. 왜 이런일이 발생할까? 
+우리가 F 변수에 대해 알고 있다면 T를 안다고 해서 H1에 대한 정보를 더 얻을 수 없기 때문이다. 
+다음과 같은 코드를 통해 DAG에 어떤 조건부 독립 관계가 있는지 알아볼 수 있다.
+
+```r
+library(dagitty)
+
+dag_plant <- dagitty('
+dag {
+    H_0 -> H_1
+    F -> H_1
+    T -> F
+}')
+
+impliedConditionalIndependencies(dag_plant)
+# F _||_ H_0
+# H_0 _||_ T
+# H_1 _||_ T | F
+```
