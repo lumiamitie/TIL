@@ -535,3 +535,112 @@ G -> C
 ```
 
 이 경우에는 P가 G와 U의 공통 결과가 되기 때문에, U 변수를 관측하지 않더라도 P에 조건을 걸면 G → C 에 대한 추론에서 편향이 발생한다.
+
+200건의 데이터를 시뮬레이션하여 살펴보자. 
+
+```r
+simulate_triad <- function(seed = 123) {
+    set.seed(seed)
+    
+    N <- 200  # Triad 수
+    b_GP <- 1 # G -> P 의 직접적인 효과
+    b_GC <- 0 # G -> C 의 직접적인 효과
+    b_PC <- 1 # P -> C 의 직접적인 효과
+    b_U <- 2  # U -> P, U -> C 의 직접적인 효과
+    
+    tibble(
+        G = rnorm(N),
+        U = 2*rbern(N, 0.5) - 1,
+        P = rnorm(N, b_GP*G + b_U*U),
+        C = rnorm(N, b_PC*P + b_GC*G + b_U*U)
+    )
+}
+
+# 시뮬레이션 결과를 생성한다
+sim_triad <- simulate_triad()
+```
+
+이제 조부모(G)의 영향을 추정하려면 어떻게 해야 할까? 조부모(G)의 영향 중 일부는 부모(P)를 통해 전달된다. 
+따라서 부모의 효과를 통제해야 한다. 회귀 모형을 구성하기 전에, 원래는 변수를 표준화하는 것을 권장하지만 
+추론 과정에서 기울기에 대한 추론이 어떻게 변하는지 살펴보기 위해 원래의 스케일을 유지하기로 한다. 또한 예시를 위해 정보가 약한 prior를 사용한다.
+
+```r
+m_triad_pgc <- quap(
+    alist(
+        C ~ dnorm(mu, sigma),
+        mu <- a + b_PC*P + b_GC*G,
+        a ~ dnorm(0, 1),
+        c(b_PC, b_GC) ~ dnorm(0, 1),
+        sigma ~ dexp(1)
+    ),
+    data = sim_triad
+)
+
+precis(m_triad_pgc)
+#        mean   sd  5.5% 94.5%
+# a     -0.12 0.10 -0.27  0.04
+# b_PC   1.82 0.04  1.75  1.89
+# b_GC  -0.72 0.11 -0.89 -0.54
+# sigma  1.38 0.07  1.27  1.49
+```
+
+추정된 P의 효과는 실제보다 2배 가량 커보인다. 이런 결과는 이상하지 않다. P와 C의 상관관계 중 일부는 U로 인해 발생했는데 모형은 U에 대해 전혀 알지 못한다. 
+이것은 **교란변수** 에 대한 간단한 예제다. 게다가 이 모형은 G가 C에 대해 부정적인 영향을 미친다고 계산했다. 
+회귀 모형은 틀리지 않았지만, 이 관계를 인과적으로 해석한다면 잘못된 해석이 된다. 
+
+여기서 Collider bias 는 어떻게 등장하는지 살펴보자. P 변수에서 백분위 기준 45% ~ 60% 사이에 존재하는 항목만 진하게 표시하면 아래와 같은 결과가 나온다. 
+해당 데이터에 대해서만 회귀 모형을 구하면 음의 상관관계가 나타난다. 그런데 왜 이런 현상이 나타나게 되는 걸까?
+
+```r
+local({
+sim_triad_condition <- sim_triad %>% 
+    mutate(p_conditioned = between(P, quantile(P, 0.45), quantile(P, 0.60)),
+        U = factor(U))
+
+ggplot(sim_triad_condition, aes(x = G, y = C)) +
+    geom_point(aes(color = U, alpha = p_conditioned), size = 2.5) +
+    geom_smooth(data = sim_triad_condition %>% filter(p_conditioned), 
+                method = 'lm', se = FALSE, fullrange = TRUE, color = '#1D4E89') +
+    scale_color_brewer(palette = 'Set1') +
+    scale_alpha_manual(values = c(0.2, 1)) +
+    labs(alpha = 'Parents in 45th~60th quantile',
+        title = 'Unobserved confounds and collider bias') +
+    theme_minimal(base_size = 12)
+})
+```
+
+![](fig/ch6_collider_bias_01.png)
+
+왜냐하면, **P를 알고 있을 때 G 값을 안다면 자연스럽게 U에 대한 정보를 얻게된다.** 그리고 U는 C와 연관성이 있다. 
+다시, 다음 예제를 통해 확인해보자. 교육 수준이 같은 (중앙값에 가깝다고 해두자) 두 부모가 있다고 가정해보자. 
+한 쪽은 교육 수준이 높은 조부모가 있고 다른 한쪽은 조부모의 교육 수준이 낮다. 
+이 예제에서 두 부모의 교육 수준이 같으려면 살고 있는 동네에 차이가 있어야 한다. 우리는 사는 곳의 효과를 알 수 없다. 측정하지 않았기 때문이다. 
+하지만 측정하지 않았는데도 결과 변수 C에는 여전히 영향을 미치고 있다. 따라서 조부모의 교육 수준이 낮은 경우 (사는 곳 때문에) 자녀의 교육 수준이 높은 것으로 보인다. 
+
+**측정되지 않은 U 변수가 P를 Collider 로 만들고, 이 P 변수에 조건을 부여하면 Collider bias가 만들어진다.** 
+그렇다면 우리는 어떻게 해야 할까? U 변수를 측정해야 한다. U 변수를 포함하여 회귀 모형을 구성해보자. 
+이번에는 시뮬레이션 때 넣었던 파라미터와 근사한 값이 나오는 것을 볼 수 있다.
+
+```r
+m_triad_pgcu <- quap(
+    alist(
+        C ~ dnorm(mu, sigma),
+        mu <- a + b_PC*P + b_GC*G + b_U*U,
+        a ~ dnorm(0, 1),
+        c(b_PC, b_GC, b_U) ~ dnorm(0, 1),
+        sigma ~ dexp(1)
+    ),
+    data = sim_triad
+)
+
+precis(m_triad_pgcu)
+#        mean   sd  5.5% 94.5%
+# a     -0.09 0.07 -0.20  0.02
+# b_PC   0.97 0.07  0.86  1.08
+# b_GC   0.05 0.09 -0.10  0.20
+# b_U    2.10 0.15  1.86  2.34
+# sigma  0.98 0.05  0.90  1.05
+```
+
+이번에 살펴본 예제는 **Simpson's Paradox** 가 발생한 사례이다. 
+어떤 예측 변수(여기서는 P)를 추가했더니 다른 예측 변수(G)와 결과 변수(C)의 상관 관계가 역전되는 상황이 발생했다.
