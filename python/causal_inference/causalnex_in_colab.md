@@ -149,7 +149,7 @@ student_model2.remove_edge("address", "G1")
 `get_largest_subgraph()` 메서드를 통해 가장 큰 subgraph를 추출할 수 있다.
 
 ```python
-student_model3 = student_model.get_largest_subgraph()
+student_model3 = student_model2.get_largest_subgraph()
 
 student_model3.edges
 # OutEdgeView([
@@ -173,4 +173,87 @@ student_model3.edges
 
 ```python
 bn_student = BayesianNetwork(student_model3)
+```
+
+# Fitting the Conditional Distribution of the Bayesian Network
+
+## Preparing the Discretised Data
+
+`CausalNex` 의 Bayesian Network는 이산 분포만을 지원한다. 따라서 연속형 변수나 카테고리 종류가 많은 변수는 학습하기 좋은 형태로 변경해야 한다.
+가능한 값이 너무 많은 변수가 들어가면, 대체로 모형의 학습 성능이 떨어지는 결과가 발생한다. 
+
+```python
+from causalnex.discretiser import Discretiser
+from sklearn.model_selection import train_test_split
+```
+
+## Cardinality of Categorical Features
+
+카테고리 변수의 항목 수(Cardinality)를 줄여보자. 
+
+```python
+student_data_discrete = student_data.copy()
+
+# 카테고리 데이터 전처리를 위한 mapping을 만든다
+data_vals = {col: student_data_discrete[col].unique() for col in student_data_discrete.columns}
+failures_map = {v: 'no-failure' if v == [0]
+            else 'have-failure' for v in data_vals['failures']}
+studytime_map = {v: 'short-studytime' if v in [1,2]
+                 else 'long-studytime' for v in data_vals['studytime']}
+
+# Mapping을 반영하여 카테고리 변수의 cardinality를 낮춘다
+student_data_discrete["failures"] = student_data_discrete["failures"].map(failures_map)
+student_data_discrete["studytime"] = student_data_discrete["studytime"].map(studytime_map)
+```
+
+## Discretising Numeric Features
+
+`CausalNex` 에서는 수치형 변수를 카테고리 변수로 바꾸기 위한 다양한 방법을 `causalnex.discretiser.Discretiser` 를 통해 제공한다.
+여기서는 고정된 버켓 경계를 설정하는 `fixed` 방법을 사용한다.
+
+```python
+student_data_discrete["absences"] = Discretiser(
+    method="fixed",
+    numeric_split_points=[1, 10]
+).transform(student_data_discrete["absences"].values)
+
+student_data_discrete["G1"] = Discretiser(
+    method="fixed",
+    numeric_split_points=[10]
+).transform(student_data_discrete["G1"].values)
+
+student_data_discrete["G2"] = Discretiser(
+    method="fixed",
+    numeric_split_points=[10]
+).transform(student_data_discrete["G2"].values)
+
+student_data_discrete["G3"] = Discretiser(
+    method="fixed",
+    numeric_split_points=[10]
+).transform(student_data_discrete["G3"].values)
+```
+
+## Create Labels for Numeric Features
+
+카테고리 값을 더 쉽게 파악할 수 있도록 직관적인 이름을 붙여보자.
+
+```python
+absences_map = {0: "No-absence", 1: "Low-absence", 2: "High-absence"}
+
+G1_map = {0: "Fail", 1: "Pass"}
+G2_map = {0: "Fail", 1: "Pass"}
+G3_map = {0: "Fail", 1: "Pass"}
+
+student_data_discrete["absences"] = student_data_discrete["absences"].map(absences_map)
+student_data_discrete["G1"] = student_data_discrete["G1"].map(G1_map)
+student_data_discrete["G2"] = student_data_discrete["G2"].map(G2_map)
+student_data_discrete["G3"] = student_data_discrete["G3"].map(G3_map)
+```
+
+## Train / Test Split
+
+일반적인 머신러닝 모델링에서 하던 대로 학습/평가 데이터셋을 분리한다.
+
+```python
+train, test = train_test_split(student_data_discrete, train_size=0.9, test_size=0.1, random_state=7)
 ```
