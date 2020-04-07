@@ -2,6 +2,8 @@
 
 [Youtube ZeroCho TV: React 기본 강좌 5-1. 리액트 라이프사이클 소개](https://www.youtube.com/watch?v=ltw4FYagLfM) 듣고 정리.
 
+## Class : 라이프 사이클
+
 - **라이프 사이클**
     - 컴포넌트 렌더링 결과를 DOM에 추가하는 순간에 수행해야 하는 작업이 있을 경우, 라이프 사이클을 사용한다
 - 우선 크게 세 가지 라이프사이클을 살펴보자
@@ -20,3 +22,34 @@
     4. componentDidMount
     5. setState, props 바뀔 때 → shouldComponentUpdate → rendering → componentDidUpdate
     6. 부모 컴포넌트에서 현재 컴포넌트를 제거 → componentWillUnmount → 컴포넌트 제거됨
+
+## Hooks : useEffect
+
+- Hooks에는 원래 라이프사이클이 없지만 비슷하게 흉내낼 수 있다 : **useEffect** 를 사용한다
+    - 컴포넌트가 렌더링될 때마다 `useEffect` 부분이 반복적으로 실행된다
+
+```javascript
+import React, { useState, useEffect } from 'react';
+    
+const Component = () => {
+    const [value, setValue] = useState();
+
+    useEffect(() => {
+        // useEffect가 componentDidMount, componentDidUpdate 와 비슷한 역할을 수행한다
+        something()
+        return () => {
+            // useEffect 안에서 리턴되는 함수는 componentWillUnmount 역할을 한다
+            somethingElse()
+        }
+    }, [
+        // 변경사항을 추적하고자 하는 변수를 등록한다
+        value
+    ]);
+
+    return (
+        ...
+    )
+}
+
+export default Component;
+```
