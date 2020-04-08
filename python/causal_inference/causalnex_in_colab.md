@@ -257,3 +257,76 @@ student_data_discrete["G3"] = student_data_discrete["G3"].map(G3_map)
 ```python
 train, test = train_test_split(student_data_discrete, train_size=0.9, test_size=0.1, random_state=7)
 ```
+
+# Model Probability
+
+미리 학습해둔 구조 모형과 카테고리 변수로 바꿔둔 데이터가 있다면, 이제 Bayesian Network 의 확률 분포를 학습할 수 있다. 
+우선 모든 노드가 가질 수 있는 상태값을 모두 확인하는 작업이 필요하다. 이 작업은 학습/테스트 데이터셋 구분 없이 모든 데이터를 사용한다.
+
+```python
+bn_student = bn_student.fit_node_states(student_data_discrete)
+```
+
+## Fit Conditional Probability Distributions
+
+`BayesianNetwork` 객체의 `.fit_cpds` 메서드는 학습셋을 받아서 각 노드의 조건부 확률 분포(CPD)를 학습한다. 
+
+```python
+bn_student = bn_student.fit_cpds(train, method="BayesianEstimator", bayes_prior="K2")
+```
+
+CPD를 학습하면 `cpd` 프로퍼티를 통해 확인할 수 있다.
+
+```python
+bn_student.cpds["G1"]
+```
+
+## Predict the State given the Input Data
+
+`BayesianNetwork` 의 `.predict` 메서드는 학습한 네트워크를 바탕으로 예측한다.
+다음과 같은 학생의 데이터가 있다고 가정해보자. 이 학생이 시험에 합격할 수 있을지를 예측해보자.
+
+```python
+# 판다스의 .loc 메서드를 통해 데이터를 조회한다
+student_data_discrete.loc[18, student_data_discrete.columns != 'G1']
+# address                     1
+# famsize                     0
+# Pstatus                     1
+# Medu                        3
+# Fedu                        2
+# traveltime                  1
+# studytime     short-studytime
+# failures         have-failure
+# schoolsup                   0
+# famsup                      1
+# paid                        1
+# activities                  1
+# nursery                     1
+# higher                      1
+# internet                    1
+# romantic                    0
+# famrel                      5
+# freetime                    5
+# goout                       5
+# Dalc                        2
+# Walc                        4
+# health                      5
+# absences          Low-absence
+# G2                       Fail
+# G3                       Fail
+# Name: 18, dtype: object
+
+# 시험 결과를 예측한다
+predictions = bn_student.predict(student_data_discrete, "G1")
+
+# 예측 결과와 실제 데이터를 비교해보자
+predictions.loc[18, 'G1_prediction'] # 예측 결과
+student_data_discrete.loc[18, 'G1']  # 실제 데이터
+```
+
+# Model Quality
+
+CausalNex는 학습한 모형을 평가하기 위해 크게 2가지 방법을 제공한다.
+
+1. 분류 결과 레포트 (precision, recall, F1 score, support)
+2. ROC, AUC
