@@ -6,9 +6,10 @@
 
 - 2020-04-01 기준 causalnex 0.5 버전을 설치하면 강제로 pandas 0.24.0 을 다운로드 한다
 - causalnex의 다른 디펜던시 및 google-colab 관련 라이브러리들이 pandas 0.25 이상을 필요로 하기 때문에 pandas를 새로 설치한다
+- 2020-04-09 기준 pandas 1.0 을 사용할 경우 일부 CausalNex의 메서드에서 에러가 발생한다
 
 ```
-!pip install causalnex && pip install 'pandas==1.0.0' --force-reinstall
+!pip install causalnex && pip install 'pandas==0.25.1' --force-reinstall
 ```
 
 - pygraphviz 를 설치하기 위해 관련된 디펜던시를 설치한다
