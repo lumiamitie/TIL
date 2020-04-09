@@ -330,3 +330,128 @@ CausalNex는 학습한 모형을 평가하기 위해 크게 2가지 방법을 �
 
 1. 분류 결과 레포트 (precision, recall, F1 score, support)
 2. ROC, AUC
+
+## Classification Report
+
+BN을 사용한 분류결과 레포트를 보고 싶다면 테스트셋 데이터를 입력해야 한다. 분류 결과 레포트는 테스트셋의 데이터 각각을 예측한 후 결과를 알려준다.
+아래 결과를 보면 학생들이 시험에서 떨어진 경우에는 precision은 나쁘지 않지만 recall이 매우 낮다는 것을 알 수 있다. 
+
+```python
+from causalnex.evaluation import classification_report
+from causalnex.evaluation import roc_auc
+
+classification_report(bn_student, test, "G1")
+#               precision    recall  f1-score  support
+# G1_Fail        0.777778  0.583333  0.666667       12
+# G1_Pass        0.910714  0.962264  0.935780       53
+# micro avg      0.892308  0.892308  0.892308       65
+# macro avg      0.844246  0.772799  0.801223       65
+# weighted avg   0.886172  0.892308  0.886097       65
+```
+
+## ROC / AUC
+
+ROC와 AUC는 `CausalNex` 의 `roc_auc` 를 통해 계산할 수 있다. ROC 커브는 각 타겟 노드의 모든 클래스에 대한 예측을 micro averaging 하여 계산한다.
+
+```python
+roc, auc = roc_auc(bn_student, test, "G1")
+print(f'AUC: {auc}')
+# AUC: 0.9181065088757396
+```
+
+# Querying Marginals
+
+모형의 구조를 파악하고, CPD를 학습한 후에 모형의 성능을 평가한다. 이 작업을 반복하여 좋은 모형을 구성했다면, 다른 관측 결과가 들어왔을 때 어떤 예측 결과가 나올지 쿼리해 볼 수 있다. 이러한 방식으로 인사이트를 얻어보자.
+
+## Baseline Marginals
+
+데이터 전체를 반영한 Baseline marginals에 대해 쿼리를 해보자. 우선 모형을 다시 학습해야 한다. 학습/평가셋 구분 없이 모든 데이터를 사용하여 확률값을 업데이트 한다.
+기존의 CPD를 덮어씌우기 때문에 Warning 메세지가 나오지만 무시하고 넘어간다.
+
+```python
+bn_student = bn_student.fit_cpds(student_data_discrete, method="BayesianEstimator", bayes_prior="K2")
+```
+
+추론을 위해 `InferenceEngine` 모듈을 불러온다. `.query()` 메서드를 적용하면 모든 노드의 클래스에 대해 쿼리를 해볼 수 있다.
+
+```python
+from causalnex.inference import InferenceEngine
+
+ie_student = InferenceEngine(bn_student)
+
+marginals = ie_student.query()
+marginals["G1"]
+# {'Fail': 0.25260687281677224, 'Pass': 0.7473931271832277}
+```
+
+위 결과는 다음 사실을 알려준다.
+
+- `P(G1 = Fail) = 0.2526`
+- `P(G1 = Pass) = 0.7474`
+
+전체 데이터를 살펴보면 Fail이 157건, Pass가 492건으로 시험에 떨어진 학생의 비율은 `157/(492+157) = 0.2419` 이다. 
+Marginal Likelihood 결과와 비슷하다는 것을 알 수 있다. 
+
+## Marginals after Observations
+
+어떤 관측결과가 주어졌을 때 예측 결과에 대한 likelihood가 어떻게 변할지 쿼리할 수 있다. 
+관측 결과가 네트워크를 통해 전파되면서 어떠한 영향을 미치게 되는지 알 수 있다.
+아래 결과를 보면 공부한 시간이 길어질 경우 시험에 통과할 확률이 높아졌다는 것을 알 수 있다.
+
+```python
+marginals_short = ie_student.query({"studytime": "short-studytime"})
+marginals_long = ie_student.query({"studytime": "long-studytime"})
+
+print("Marginal G1 | Short Studtyime : ", marginals_short["G1"])
+print("Marginal G1 | Long Studytime : ", marginals_long["G1"])
+# Marginal G1 | Short Studtyime :  {'Fail': 0.2776556433482524, 'Pass': 0.7223443566517477}
+# Marginal G1 | Long Studytime :  {'Fail': 0.15504850337837614, 'Pass': 0.8449514966216239}
+```
+
+# Do Calculus
+
+CausalNex는 간단한 Do-Calculus 를 지원하기 때문에 특정한 개입(intervention)을 수행할 수 있다.
+
+## Updating a Node Distribution
+
+데이터 상의 특정 노드에 개입하여 **Do** Operator를 통해 분포를 업데이트 할 수 있다. 
+이러한 작업을 통해 만약 특정 조건이 달라졌다면 어떻게 되었을지 모형을 통해 계산해 볼 수 있다. 
+예를 들어 모든 학생들이 `higher=1 (또는 yes)` 였다면 (모든 학생들이 고등교육을 받기를 원했다면) 결과가 어떻게 되었을까?
+
+```python
+# do-operator 이전의 분포
+print("distribution before do", ie_student.query()["higher"])
+# distribution before do {0: 0.10752688172043011, 1: 0.8924731182795698}
+
+# higher=1 의 비중이 100%가 되도록 수정한다
+ie_student.do_intervention("higher", {1: 1.0, 0: 0.0})
+
+# do-operator 이후의 분포
+print("distribution after do", ie_student.query()["higher"])
+# distribution after do {0: 0.0, 1: 0.9999999999999998}
+```
+
+## Resetting a Node Distribution
+
+`.reset_do()` 메서드를 통해 do 오퍼레이션 결과를 초기화할 수 있다. 초기화 하고자 하는 노드의 이름을 입력한다.
+
+```python
+ie_student.reset_do("higher")
+```
+
+## Effect of Do on Marginals
+
+개입이 Marginal Likelihood에 어떤 영향을 미치는지 알아볼 수 있다.
+
+```python
+# do-operator 이전의 Marginal Likelihood
+print("distribution before do", ie_student.query()["G1"])
+# distribution before do {'Fail': 0.25260687281677224, 'Pass': 0.7473931271832277}
+
+# higher=1 의 비중이 100%가 되도록 수정한다
+ie_student.do_intervention("higher", {1: 1.0, 0: 0.0})
+
+# do-operator 이후의 Marginal Likelihood
+print("distribution after do", ie_student.query()["G1"])
+# distribution after do {'Fail': 0.20682952942551894, 'Pass': 0.7931704705744809}
+```
