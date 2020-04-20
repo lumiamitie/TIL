@@ -56,7 +56,7 @@ canvas:last-child {
 
 ```javascript
 const drawSample = (id, subtitle) => {
-	const canvas = document.getElementById(id);
+    const canvas = document.getElementById(id);
 
     // 이미지 해상도를 높이기 위한 비율 및 canvas 사이즈 설정
     const devicePixelRatio = 2;
@@ -70,11 +70,11 @@ const drawSample = (id, subtitle) => {
 
     // 흰색 사격형 추가
     ctx.fillStyle = '#ffffff';
-	ctx.fillRect (0, 50, 120, 90);
+    ctx.fillRect (0, 50, 120, 90);
     // 흰색 원 추가
     let circle = new Path2D();
-	circle.arc(30, 50, 20, 0, 2 * Math.PI);
-	ctx.fill(circle);
+    circle.arc(30, 50, 20, 0, 2 * Math.PI);
+    ctx.fill(circle);
 
     // 텍스트 추가
     ctx.fillStyle = '#000000';
