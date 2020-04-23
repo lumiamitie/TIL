@@ -53,3 +53,17 @@ const Component = () => {
 
 export default Component;
 ```
+
+- ComponentDidMount 에서는 실행하지 않으면서 ComponentDidUpdate 에서만 실행시키고 싶은 로직을 어떻게 추가하면 좋을까?
+- 다음과 같은 패턴을 통해 추가할 수 있다
+
+```js
+const mounted = useRef(false);
+useEffect(() => {
+    if (!mounted.current) {
+        mounted.current = true;
+    } else {
+        // 원하는 작업을 여기에 추가한다
+    }
+}, [variableToTrack]);
+```
