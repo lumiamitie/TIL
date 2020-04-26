@@ -323,3 +323,88 @@ LOOCV의 문제는 관측치가 많아질수록 계산하는데 시간이 오래
 이 전략을 통해 CV 점수를 근사적으로 계산할 수 있는 방법을 얻을 수 있다. 
 이 근사법을 **Pareto-Smoothed Importance Sampling Cross-Validation** ( 줄여서 **PSIS** ) 이라고 한다. 
 PSIS의 좋은 점 중 하나는 모형의 신뢰성에 대한 정보를 제공한다는 것이다. 자세한 내용은 이 장의 남은 내용들과 책 전반에 걸친 예제를 통해 살펴볼 수 있을 것이다.
+
+## 7.4.2 Information Criteria
+
+두 번째 방식인 Information Criteria 는 샘플 바깥과의 상대적인 KL divergence 을 추정하는 방식이다. 
+일반적인 회귀 모형에 flat prior를 사용할 경우, 예상되는 과적합 페널티는 파라미터 개수의 약 2배가 된다. 
+이러한 현상이 Information Criteria의 이론적 바탕이 된다. 이 중에서 가장 많이 알려진 것은 **AIC(Akaike Information Criterion)** 다.
+
+```
+AIC = D_train + 2p 
+    = -2 * lppd + 2p
+
+* p : Posterior 분포의 자유로운 파라미터 개수
+```
+
+AIC는 다음과 같은 조건이 성립할 때만 신뢰할 수 있는 근사치다.
+
+1. flat한 prior를 사용하거나 데이터로 인한 영향이 압도적이다
+2. Posterior가 근사적으로 다변량 정규분포를 따른다
+3. 샘플 사이즈 N이 파라미터 개수 k 보다 훨씬 크다
+
+flat prior는 보통 최적의 prior가 아니기 때문에, 훨씬 일반화된 지표가 필요하다. 
+따라서 여기에서는 **WAIC(Widely Applicable Information Criterion)** 를 사용한다. 
+WAIC는 posterior의 형태와 상관없이 사용할 수 있다. 일반화를 시키다보니 어쩔 수 없이 수식은 많이 복잡해지게 되었다. 
+하지만 크게 두 부분으로 나눌 수 있고, 둘 다 Posterior 분포에서 샘플링을 통해 구할 수 있다. 
+
+```
+WAIC = -2 * (lppd - Penalty Term)
+
+* Penalty Term : 각 관측치의 로그 확률에서 분산을 구하고, 이 값을 전부 합한 총 페널티 점수
+                    쉽게 생각하면 "과적합 페널티 점수" 라고 볼 수 있다
+```
+
+PSIS 처럼 WAIC 도 관측치 각각에 대해 계산해야 한다. 어떤 관측치들은 예측이 더 어려울 수도 있고, 불확실성의 크기가 서로 다를 수 있기 때문에 이런 특성은 유용하게 사용할 수 있다. 
+유용한 활용법 중 하나는 샘플 바깥의 편차를 예측할 때 그 표준 오차를 구하는 것이다.
+
+Cross Validation 처럼 WAIC 도 데이터를 독립적인 관측치 덩어리로 나누는 것을 허용한다. 그래서 가끔은 정의하기 어려워지는 경우가 있다. 
+예를 들면 시계열 데이터의 경우 이전의 관측치들이 이후에 영향을 미치기 때문에 데이터가 서로 독립이라고 보기 어렵다. 
+값을 계산할 수는 있지만 그 값이 의미하는 바가 명확하지 않다.
+
+R 코드를 통해 WAIC 계산 과정을 살펴보자.
+
+```r
+# 간단한 회귀 모형을 만든다
+data(cars)
+model <- quap(
+    alist(
+        dist ~ dnorm(mu, sigma),
+        mu <- a + b * speed,
+        a ~ dnorm(0, 100),
+        b ~ dnorm(0, 10),
+        sigma ~ dexp(1)
+    ),
+    data = cars
+)
+
+get_waic <- function(data, model, n_samples = 1000, seed = 123) {
+    set.seed(seed)
+    n_cases <- nrow(data)
+    # 모형에서 Posterior의 샘플을 추출한다
+    post <- extract.samples(model, n = n_samples)
+    # 각 샘플 s에서 관측치별 log likelihood를 구한다
+    logprob <- seq_len(n_samples) %>%
+        sapply(function(s) {
+            mu <- post$a[s] + post$b[s] * data$speed
+            dnorm(data$dist, mu, post$sigma[s], log = TRUE)
+        })
+    # lppd를 구한다
+    # * 각 관측치에 대해 log likelihood 값을 평균한다
+    # * 정확도를 위해 log 스케일로 변한하여 계산한다
+    lppd <- seq_len(n_cases) %>%
+        sapply(function(i) rethinking::log_sum_exp(logprob[i, ]) - log(n_samples)) %>%
+        sum()
+    # 페널티 항을 계산한다
+    # * 각 관측치에 대해 샘플 간의 분산을 구한다
+    penalty_waic <- seq_len(n_cases) %>%
+        sapply(function(i) var(logprob[i, ])) %>% 
+        sum()
+
+    # WAIC 값을 반환한다
+    -2 * (lppd - penalty_waic)
+}
+
+get_waic(cars, model)
+# [1] 422.4667
+```
