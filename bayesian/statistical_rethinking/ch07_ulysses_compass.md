@@ -421,3 +421,67 @@ PSIS와 WAIC 모두 일반적인 선형 회귀 모형에서는 비슷하게 동�
 CV나 PSIS는 KL Divergence의 추정치로 사용할 경우에 분산이 커지는 경향이 있다. 
 따라서 이러한 경우에는 WAIC가 더 나을 수 있지만, 실제로 WAIC를 사용해서 얻는 이득이 크지 않다. 또한 모형의 순위만 매기면 되는 상황에서는 PSIS가 WAIC보다 못할 이유가 없다. 
 그리고 PSIS의 각 관측치에서 구하는 k값을 통해 어느 데이터에서 PSIS 값이 불안정한지 확인할 수 있다.
+
+# 7.5 Using cross-validation and information criteria
+
+다시 원래의 문제로 돌아가보자. 데이터를 설명할 수 있는 모형 후보들이 여러 개 있을 때, 각 모형의 정확도를 어떻게 비교할 수 있을까? 
+모형이 샘플 데이터에 얼마나 적합한지 보거나, information divergence 를 사용하게 되면 복잡한 모형을 선호하는 경향이 있다. 
+따라서 우리는 샘플 바깥에 모형을 적용했을 때를 추정해야 한다. 2가지 중요한 포인트가 있다.
+
+1. Flat prior 를 사용하면 예측 결과가 좋지 않다. Prior를 정규화 하면 샘플에 대한 적합도는 떨어지지만, 예측 정확도를 높일 수 있다.
+2. CV, PSIS, WAIC 를 사용하면 예측 정확도를 잘 추정할 수 있으며, Prior 정규화와 서로 상호 보완적인 역할을 한다.
+
+이제 실제로 분석을 해보자. Prior 정규화와 CV/PSIS/WAIC 같은 지표를 어떻게 사용하면 좋을까? 
+흔히 **모형 선택(Model Selection)** , 다시 말해 점수를 바탕으로 하나의 모형만 선택하는 방식을 사용한다. 하지만 이런 방식은 사용하지 않는 것이 좋다. 
+
+1. 모형 간의 상대적인 정확도 차이 정보를 버리게 되기 때문이다
+    - 파라미터에 대한 신뢰도
+    - 모형에 대한 신뢰도
+2. 정확도가 높은 모형이라고 해서 인과 관계를 잘 설명할 수 있는 것은 아니기 때문이다 
+
+따라서 우리는 모형을 선택하는 것이 아니라, 모형을 비교하는데 중점을 둘 것이다. 
+
+## 7.5.1 Model mis-selection
+
+인과 관계를 추론하는 것과 예측을 수행하는 것은 전혀 다른 작업이라는 것을 명심해야 한다. CV, PSIS, WAIC 는 좋은 예측을 하는 모형을 찾기 위한 도구다. 
+높은 예측 정확도를 가지는 모형을 선택하다보면 교란된 모형을 선택하게 될 가능성이 높아진다. 
+Backdoor path는 데이터에 숨겨진 상관관계 정보를 제공하기 때문에 우리가 개입하지 않았을 경우에 발생할 미래를 잘 예상할 수 있다. 
+**하지만 우리가 정의한 인과관계라는 것은 그런게 아니다. 우리가 개입했을 때 어떻게 변할지 예상할 수 있어야 한다.** 
+따라서 PSIS나 WAIC 점수가 높다고 해서 인과 관계를 잘 설명할 수 있을 거라고 기대하면 안된다.
+
+WAIC를 계산하기 위해 rethinking 라이브러리에서 제공하는 함수를 사용해보자.
+
+```r
+#### (1) 특정 모형의 WAIC를 계산한다 ####
+set.seed(123)
+rethinking::WAIC(m_bm_06)
+#        WAIC     lppd  penalty   std_err
+# 1 -72.42255 39.50894 3.297659 0.4268529
+
+# WAIC    : out-of-sample deviance 에 대한 추정값
+# lppd    : Log Pointwise Predictive Density
+# penalty : pWAIC (the effective number of parameters)
+# std_err : WAIC 값의 standard error
+
+# (2) 여러 모형을 비교한다
+# - 각 모형의 WAIC를 비교한다
+rethinking::compare(m_bm_01, m_bm_02, m_bm_06)
+#          WAIC   SE dWAIC  dSE pWAIC weight
+# m_bm_06 -71.8 0.34   0.0   NA   3.6      1
+# m_bm_01   5.5 8.32  77.4 8.91   5.2      0
+# m_bm_02   8.4 7.95  80.2 8.53   6.7      0
+
+# WAIC   : WAIC 값. 작을수록 좋다 (기본적으로는 WAIC 오름차순으로 모형이 정렬된다)
+# SE     : WAIC의 표준 편차. 
+# dWAIC  : 가장 낮은 WAIC를 가지는 모형과 얼마나 차이가 나는지 비교
+# dSE    : 모형간 WAIC 차이에 대한 표준 편차
+# pWAIC  : penalty term
+# weight : 각 모형에 대한 상대적인 지지도 (전부 합하면 1이 된다)
+
+# - WAIC 댜산 PSIS를 사용해 비교할 수 있다
+rethinking::compare(m_bm_01, m_bm_02, m_bm_06, func = PSIS)
+#          PSIS    SE dPSIS   dSE pPSIS weight
+# m_bm_06 -66.2  1.94   0.0    NA   6.4      1
+# m_bm_01  10.2 12.50  76.4 12.34   7.5      0
+# m_bm_02  26.1 12.98  92.3 12.56  15.6      0
+```
