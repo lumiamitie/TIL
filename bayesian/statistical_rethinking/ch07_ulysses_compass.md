@@ -478,10 +478,123 @@ rethinking::compare(m_bm_01, m_bm_02, m_bm_06)
 # pWAIC  : penalty term
 # weight : 각 모형에 대한 상대적인 지지도 (전부 합하면 1이 된다)
 
-# - WAIC 댜산 PSIS를 사용해 비교할 수 있다
+# - WAIC 대신 PSIS를 사용해 비교할 수 있다
 rethinking::compare(m_bm_01, m_bm_02, m_bm_06, func = PSIS)
 #          PSIS    SE dPSIS   dSE pPSIS weight
 # m_bm_06 -66.2  1.94   0.0    NA   6.4      1
 # m_bm_01  10.2 12.50  76.4 12.34   7.5      0
 # m_bm_02  26.1 12.98  92.3 12.56  15.6      0
 ```
+
+## 7.5.2 Something about *Cebus*
+
+WAIC 와 LOOIS 의 장점 중 하나는 모형이 어떤 관측치를 어려워하는지 알 수 있다는 것이다. 그리고 모형을 비교할 때 어떤 관측치들을 쉽거나 어려워 하는지 여부는 데이터가 생성되는 프로세스를 파악하는 단서가 된다. 이 장의 마지막 예제에서는 새로운 데이터를 통해 WAIC와 인과관계 추론이 실제 데이터에 어떻게 적용되는지 살펴보자.
+
+```r
+library(rethinking)
+library(tidyverse)
+
+# rethinking 라이브러리의 영장류 데이터를 메모리로 가져온다
+data('Primates301', package = 'rethinking')
+
+# 다음과 같이 세 가지 변수를 사용한다
+# - longevity    : 수명 (개월)
+# - body mass    : 몸무게 (그램)
+# - brain volume : 뇌의 부피 (세제곱센티미터)
+
+# 데이터 전처리에 사용할 표준화 함수를 만든다
+log_standardize = function(x, base = exp(1), ...) {
+  scale(log(x, base), ...)[,1]
+}
+
+# 데이터를 전처리한다
+# - 모델링에 사용할 변수를 표준화시킨다
+# - L, B, M 변수 모두 존재하는 경우를 추출한다
+primates <- Primates301 %>% 
+  as_tibble() %>% 
+  mutate(log_L = log_standardize(longevity),
+         log_B = log_standardize(brain),
+         log_M = log_standardize(body)) %>% 
+  filter(complete.cases(log_L, log_B, log_M))
+```
+
+변수 간의 관계를 DAG로 표현하면 다음과 같다.
+
+```
+M -> B -> L
+M    ->   L
+M <- U -> L
+(M: 몸의 질량, B: 뇌의 부피, L: 수명, U: 관측되지 않은 교란변수)
+
+질문 : 몸의 질량과 뇌의 부피가 수명에 영향을 미칠까?
+* 몸이 클수록 천적이 줄어 수명이 늘어날 것이다
+* 뇌의 부피는 몸의 질량과 상관관계가 높다는 것이 알려져 있다
+```
+
+모형을 작성하고 Posterior를 근사해보자. 
+
+```r
+# 모형을 학습한다
+# * 원래의 스케일에서는 선형 관계이기 어렵지만, 로그 스케일이라면 가능하다
+m_primates_01 <- quap(
+  alist(
+    log_L ~ dnorm(mu, sigma),
+    mu <- a + bM * log_M + bB * log_B,
+    a ~ dnorm(0, 0.1),
+    bM ~ dnorm(0, 0.5),
+    bB ~ dnorm(0, 0.5),
+    sigma ~ dexp(1)
+  ),
+  data = primates
+)
+```
+
+결과를 살펴보기 전에 간단한 모형을 2개 더 학습해보자.
+
+```r
+m_primates_02 <- quap(
+  alist(
+    log_L ~ dnorm(mu, sigma),
+    mu <- a + bB * log_B,
+    a ~ dnorm(0, 0.1),
+    bB ~ dnorm(0, 0.5),
+    sigma ~ dexp(1)
+  ),
+  data = primates
+)
+
+m_primates_03 <- quap(
+  alist(
+    log_L ~ dnorm(mu, sigma),
+    mu <- a + bM * log_M,
+    a ~ dnorm(0, 0.1),
+    bM ~ dnorm(0, 0.5),
+    sigma ~ dexp(1)
+  ),
+  data = primates
+)
+```
+
+각 모형의 WAIC를 비교해보자.
+
+- B, M을 모두 사용한 1번 모형과 B만 사용한 2번 모형은 WAIC 만으로 우열을 가리기 어렵다
+- 1,2번 모형 모두 M만 사용한 3번 모형과는 상당히 큰 차이가 난다
+
+이러한 결과를 보면 뇌의 부피가 몸의 크기보다 수명과 더 연관성이 높아 보일 것이다.
+
+```r
+set.seed(123)
+compare(m_primates_01, m_primates_02, m_primates_03)
+#                WAIC    SE dWAIC  dSE pWAIC weight
+# m_primates_01 216.1 14.73   0.0   NA   3.4   0.56
+# m_primates_02 216.5 14.87   0.5 1.54   2.6   0.44
+# m_primates_03 229.7 16.48  13.6 7.15   2.6   0.00
+
+# 그래프를 통해 살펴보자
+set.seed(123)
+plot(compare(m_primates_01, m_primates_02, m_primates_03))
+```
+
+![](fig/ch7_primate_example_01.png)
+
+하지만 이번에는 Posterior 분포를 살펴보자.
