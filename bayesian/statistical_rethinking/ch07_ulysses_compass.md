@@ -597,4 +597,99 @@ plot(compare(m_primates_01, m_primates_02, m_primates_03))
 
 ![](fig/ch7_primate_example_01.png)
 
-하지만 이번에는 Posterior 분포를 살펴보자.
+하지만 이번에는 Posterior 분포를 살펴보자. 두 변수를 모두 사용한 1번 모형에서 bM과 bB의 Posterior 분포가 더 넓은 것을 확인할 수 있다. 
+6장의 다중공선성 문제처럼, `log_B` 와 `log_M` 변수는 서로 높은 상관관계를 가진다고 볼 수 있다. 
+
+```r
+plot(coeftab(m_primates_01, m_primates_02, m_primates_03), pars = c('bM', 'bB'))
+```
+
+![](fig/ch7_primate_example_02.png)
+
+```r
+# 두 변수의 상관관게를 계산해보자
+primates %>% with(cor(log_B, log_M))
+# [1] 0.9796272
+```
+
+두 변수가 서로 높은 상관관계를 가진다는 것은 사실 잘 알려져있다. 하지만 두 변수는 서로 대체재가 아니다. 
+2,3번 모형을 보면 M 변수를 추가한 뒤에도 B 변수는 여전히 높은 (하지만 음의 방향으로 바뀐) 상관관계를 가지고 있다. 
+
+- 영장류의 데이터에서만 일어나는 상황일까?
+    - 동일한 현상이 포유류 데이터에서도 발생한다
+- 데이터를 추가적으로 처리하면 나아지지 않을까?
+    - 몸무게 1그램당 뇌의 부피 (BPG) 변수를 만들어서 사용해도 비슷한 현상이 발생한다
+- 수명과 뇌의 부피 사이의 선형 모형에서 잔차를 추출해서 분석해보면 어떨까?
+    - 잔차는 관측된 값이 아니기 때문에 분포를 갖는다
+    - 따라서 잔차를 데이터처럼 생각하게 되면 그 효과를 과대 평가하게 될 우려가 있다
+
+이 주제에 대한 출판된 논의는 명확하지 않기 때문에 여기서 결론을 내진 않을 것이다. 하지만 모형이 데이터를 어떻게 바라보고 있는지를 WAIC로 한 번 살펴보자. 
+
+- x축은 1,2번 모형의 포인트별 WAIC 차이를 의미한다
+    - x축이 0보다 작을 경우 1번 모형(B + M)에서 더 정확하게 설명했다
+    - x축이 0보다 클 경우 2번 모형(B)에서 더 정확하게 설명했다
+
+```r
+waic_m_01 <- WAIC(m_primates_01, pointwise = TRUE)
+waic_m_02 <- WAIC(m_primates_02, pointwise = TRUE)
+
+primates %>% 
+  mutate(diff = waic_m_01$WAIC - waic_m_02$WAIC,
+         name = as.character(name)) %>% 
+  ggplot(aes(x = diff, y = log_L)) +
+  geom_point(aes(size = log_B - log_M), color = '#1D4E89', alpha = 0.5) +
+  geom_vline(xintercept = 0, linetype = 2, color = '#999999') +
+  geom_hline(yintercept = 0, linetype = 2, color = '#999999') +
+  geom_text(aes(label = if_else(str_detect(name, '^Cebus'), name, '')), hjust = 0.3, size = 3)+
+  labs(x = 'pointwise difference in WAIC', 
+       y = 'log longevity (std)', 
+       size = 'Diff in B and M') +
+  theme_minimal()
+```
+
+![](fig/ch7_primate_example_03.png)
+
+두 모형은 데이터에 대해 상당히 다른 특성을 보인다. 특히 1번 모형은 *Cebus* 관련하여 특이한 점이 있다. 
+현재 우리가 해결하지 못한 점은 다음과 같다. **큰 동물이 오래 산다는 이론적, 경험적 증거가 있는데도 왜 bM Posterior는 음의 상관관계를 보이는 걸까?** 
+위 부분까지 포함하여 설명할 수 있는 모형을 만들 수는 없을까?
+
+영장류가 진화하는 과정에 무슨 일이 발생했는지는 잘 모르겠다. 하지만 적어도 모형에서 이런 문제가 발생하는 이유는 **Collider Bias** 때문이 아닐까 생각한다. 
+우리가 맨 처음 그렸던 DAG에서는 뇌의 부피가 수명에 영향을 주었다. 하지만 그 반대라면 어떨까?
+
+```
+# 원래 DAG
+M -> B -> L
+M    ->   L
+M <- U -> L
+
+# B와 L 사이의 관계를 바꾼 DAG -> Collider가 생성되었다
+M -> B <- L
+M    ->   L
+M <- U -> L
+```
+
+B와 L의 순서를 바꾸었더니 Collider가 생겼다. 이런 의심을 하게 된 이유는 데이터에서 나타난 패턴 때문이다. 
+Collider의 주요 증상 중 하나는 Collider 변수(여기서는 B)를 추가했을 때 M→L 관계가 왜곡된다는 점이다. 
+
+두 번째 DAG대로 M과 L을 통해 B를 설명하는 모형을 만들어보자.
+
+```r
+m_primates_04 <- quap(
+  alist(
+    log_B ~ dnorm(mu, sigma),
+    mu <- a + bM * log_M + bL * log_L,
+    a ~ dnorm(0, 0.1),
+    bM ~ dnorm(0, 0.5),
+    bL ~ dnorm(0, 0.5),
+    sigma ~ dexp(1)
+  ),
+  data = primates
+)
+
+precis(m_primates_04)
+#        mean   sd  5.5% 94.5%
+# a     -0.05 0.02 -0.07 -0.02
+# bM     0.94 0.03  0.90  0.98
+# bL     0.12 0.03  0.07  0.16
+# sigma  0.19 0.01  0.17  0.21
+```
