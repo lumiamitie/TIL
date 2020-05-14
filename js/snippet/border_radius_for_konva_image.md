@@ -39,7 +39,7 @@ const calcClipFunc = function (ctx, x, y, width, height, radius) {
 
 Konva.Image.fromURL('https://url.to.image', function (imgNode) {
     let imgWidth = imgNode.width();
-    let imgHeight = imgNode.width();
+    let imgHeight = imgNode.height();
     let imgRadius = 6;
     // 이미지에 border-radius 를 적용하기 위해 Clipping용 Group을 생성한다
     let imgClip = new Konva.Group({
