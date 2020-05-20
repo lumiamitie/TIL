@@ -47,3 +47,95 @@ TRI가 높을 경우 운송수단이 발달하기 어려워지고 이로 인해 
 4. 다층 모형으로 확장하게 되면 특정 카테고리에서 샘플 사이즈가 매우 적어지는 문제가 생길 수 있다. 데이터를 한 번에 모델링하게 되면 다른 카테고리의 정보를 빌려오는 방식으로 문제를 일부 해결할 수 있다.
 
 이제 간단한 모형을 통해 살펴보자.
+
+## 8.1.1 Making two models
+
+데이터를 불러와서 아프리카 아프리카가 아닌 경우 두 그룹으로 나누어보자.
+
+```r
+library(rethinking)
+library(tidyverse)
+
+# rugged 데이터
+# - 각 행은 국가, 각 열은 경제/지리/역사와 관련된 변수들
+data(rugged, package = 'rethinking')
+
+# rugged 데이터 전처리
+rugged_std <- rugged %>% 
+  as_tibble() %>% 
+  filter(complete.cases(rgdppc_2000)) %>% 
+  mutate(log_gdp = log(rgdppc_2000),
+         log_gdp_std = log_gdp / mean(log_gdp),
+         rugged_std = rugged / max(rugged)) # 0에 의미가 있기 때문에 z-score를 사용하지 않는다
+
+# 아프리카 여부에 따라 데이터를 분리한다
+rugged_std_af <- rugged_std %>% filter(cont_africa == 1)
+rugged_std_naf <- rugged_std %>% filter(cont_africa == 0)
+```
+
+변수들의 관계를 모델링하기 위해 우선 다음과 같은 형태의 모형을 세워보자.
+
+- alpha 값은 ruggedness가 평균일 때 log GDP 값을 의미한다
+    - 따라서 1에 가까워야 하기 때문에 Prior를 `Normal(1, 1)` 로 시작해보자
+- beta 값은 0일 때 편향이 없는 것을 의미한다
+    - 표준 편차는 아직 잘 모르니 1에서 시작한다 : `Normal(0, 1)`
+- sigma의 Prior는 넓게 `exp(1)` 로 시작해보자
+
+```
+log(y_i) ~ Normal(mu_i, sigma)
+mu_i = alpha + beta * (r_i - r_bar)
+alpha ~ Normal(1, 1)
+beta ~ Normal(0, 1)
+
+y_i : 각 국가별 GDP
+r_i : 각 국가별 Terrain Ruggedness
+r_bar : 전체 Terrain Ruggedness 평균 (여기서는 0.215)
+```
+
+아프리카 국가들의 데이터에 모델링을 적용해보자.
+
+- 그래프에서 점선은 실제 관측한 log GDP 값의 최대, 최소 값을 의미한다
+    - 생성된 회귀선을 보면 실제 값 영역을 한참 넘어선 구간에도 많이 위치하는 것을 볼 수 있다
+    - 회귀선은 ruggedness의 평균값인 0.215와 평균 log GDP인 1을 많이 지나가야 할 것 같다
+- 기울기도 너무 실제 값에서 나타날 수 있는 영역을 많이 벗어나고 있다
+- `a ~ dnorm(1, 0.1)` , `b ~ dnorm(0, 0.3)` 인 경우의 그래프와 비교해서 살펴보자
+
+```r
+m8.1_rugged_af_01 <- quap(
+  alist(
+    log_gdp_std ~ dnorm(mu, sigma),
+    mu <- a + b * (rugged_std - 0.215),
+    a ~ dnorm(1, 1),
+    b ~ dnorm(0, 1),
+    sigma ~ dexp(1)
+  ),
+  data = rugged_std_af
+)
+
+# Prior Prediction
+set.seed(123)
+m8.1_rugged_af_01_prior <- extract.prior(m8.1_rugged_af_01)
+m8.1_rugged_af_01_mu <- link(
+  m8.1_rugged_af_01, 
+  post = m8.1_rugged_af_01_prior, 
+  data = data.frame(rugged_std = seq(-0.1, 1.1, length.out = 30))
+)
+
+# 그래프 그리기 위한 형태로 변경
+m8.1_rugged_af_01_mu_long <- t(m8.1_rugged_af_01_mu[1:50, ]) %>% 
+  as_tibble() %>% 
+  mutate(ruggedness = seq(-0.1, 1.1, length.out = 30)) %>% 
+  tidyr::pivot_longer(cols = V1:V50, names_to = 'group', values_to = 'log_gdp')
+
+ggplot(m8.1_rugged_af_01_mu_long, aes(x = ruggedness, y = log_gdp)) +
+  geom_line(aes(group = group), alpha = 0.3) +
+  geom_hline(yintercept = min(rugged_std$log_gdp_std), linetype = 2) +
+  geom_hline(yintercept = max(rugged_std$log_gdp_std), linetype = 2) +
+  ylim(0.5, 1.5) +
+  labs(title = 'a ~ dnorm(1,1), b ~ dnorm(0,1)', y = 'log GDP') +
+  theme_minimal()
+```
+
+![](fig/ch8_ruggedness_01.png)
+
+![](fig/ch8_ruggedness_02.png)
