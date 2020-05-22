@@ -139,3 +139,87 @@ ggplot(m8.1_rugged_af_01_mu_long, aes(x = ruggedness, y = log_gdp)) +
 ![](fig/ch8_ruggedness_01.png)
 
 ![](fig/ch8_ruggedness_02.png)
+
+이번에는 아프리카 국가가 아닌 경우를 모델링해보자. 모형은 이전과 동일하게 하고 데이터만 바꿔서 적용해보자. 
+하나의 모형만으로 동일한 추론을 수행하려면 어떻게 해야 할까?
+
+```r
+m8.2_rugged_naf_01 <- quap(
+  alist(
+    log_gdp_std ~ dnorm(mu, sigma),
+    mu <- a + b * (rugged_std - 0.215),
+    a ~ dnorm(1, 0.1),
+    b ~ dnorm(0, 0.25),
+    sigma ~ dexp(1)
+  ),
+  data = rugged_std_naf
+)
+
+precis(m8.1_rugged_af_01_2)
+#       mean   sd 5.5% 94.5%
+# a     0.89 0.02 0.86  0.91
+# b     0.13 0.07 0.02  0.25
+# sigma 0.10 0.01 0.09  0.12
+
+precis(m8.2_rugged_naf_01)
+#        mean   sd  5.5% 94.5%
+# a      1.05 0.01  1.03  1.07
+# b     -0.14 0.06 -0.23 -0.05
+# sigma  0.11 0.01  0.10  0.12
+```
+
+## 8.1.2 Adding an indicator variable doesn’t work
+
+한 가지 짚고 넘어가야 하는 것은, 아프리카 여부를 나타내는 `cont_africa` 변수를 모형에 추가하는 것만으로는 기울기가 역전되는 것을 설명할 수 없다는 것이다. 
+고민해 볼 만한 모형은 다음과 같이 두 가지가 있다.
+
+1. 이전과 동일한 모형을(`log GDP ~ ruggedness`) 사용하되, 전체 데이터를 적용한다
+2. 아프리카 여부에 따라 다른 절편값을 부여한다
+
+```r
+# 아프리카일 경우 1, 아닌 경우 2로 표기하는 변수를 추가한다
+rugged_std2 <- rugged_std %>%
+  mutate(cid = if_else(cont_africa == 1, 1, 2))
+
+# 기존 모형 + 전체 데이터 사용
+m8.3_rugged_all <- quap(
+  alist(
+    log_gdp_std ~ dnorm(mu, sigma),
+    mu <- a + b * (rugged_std - 0.215),
+    a ~ dnorm(1, 0.1),
+    b ~ dnorm(0, 0.3),
+    sigma ~ dexp(1)
+  ),
+  data = rugged_std2
+)
+
+# 아프리카 여부 + 전체 데이터 사용
+m8.4_rugged_all <- quap(
+  alist(
+    log_gdp_std ~ dnorm(mu, sigma),
+    mu <- a[cid] + b * (rugged_std - 0.215),
+    a[cid] ~ dnorm(1, 0.1),
+    b ~ dnorm(0, 0.3),
+    sigma ~ dexp(1)
+  ),
+  data = rugged_std2
+)
+
+# WAIC가 63이나 차이가 난다. 아프리카 여부가 큰 영향을 미치는 것으로 보인다
+compare(m8.3_rugged_all, m8.4_rugged_all)
+#                   WAIC    SE dWAIC   dSE pWAIC weight
+# m8.4_rugged_all -252.1 15.36   0.0    NA   4.3      1
+# m8.3_rugged_all -188.6 13.35  63.4 15.19   2.7      0
+
+# depth = 2 옵션을 통해 a 파라미터의 카테고리별 추정치를 살펴보자
+# 아프리카인 경우(a[1]) 비 아프리카 국가에 비해 수치가 낮다
+precis(m8.4_rugged_all, depth = 2)
+#        mean   sd  5.5% 94.5%
+# a[1]   0.88 0.02  0.85  0.91
+# a[2]   1.05 0.01  1.03  1.07
+# b     -0.05 0.05 -0.12  0.03
+# sigma  0.11 0.01  0.10  0.12
+```
+
+아프리카 여부를 모형에 포함한 결과, 아프리카 국가들의 평균이 낮다는 점을 모형을 통해 설명할 수 있게 되었다. 
+하지만 기울기에 대해서는 아무런 설명을 하지 못한다. 여전히 좋은 모형은 아니다.
