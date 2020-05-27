@@ -32,3 +32,19 @@ git commit --amend
 
 * 저 위에서 기존 커밋 메시지를 변경하고 저장하면 직전 커밋 메세지를 변경할 수 있다
 * git push --force 로 강제 push 하면 끝
+
+# 마지막 커밋의 사용자 정보 변경하기
+
+- 사용자 설정을 깜빡해서 의도하지 않은 유저 정보로 커밋을 하게 되었다면 어떻게 처리해야 할까?
+- 직전 커밋이라면 다음과 같이 처리할 수 있다
+    - 사용자 설정 후 `--amend` 옵션과 함께 커밋을 수정한다
+    - 이 때 `--reset-author` 옵션을 추가한다
+
+```bash
+# 사용자 설정
+git config user.name "UserName"
+git config user.email "mymail@mail.com"
+
+# 커밋 수정
+git commit --amend --reset-author
+```
