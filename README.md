@@ -2,9 +2,15 @@
 
 매일매일 공부
 
-## 시즌1 (2018 6/1 - 9/8)
+---
 
-주요 결과물은 다음과 같습니다.
+## 시즌1
+
+- 2018-06-01 ~ 2018-09-08
+
+<details>
+<summary>시즌1 결과물 정리</summary>
+<div markdown="1">
 
 - 포스팅 정리
     - [Introduction to Stan](https://github.com/lumiamitie/TIL/blob/master/bayesian/stan/intro_to_stan.md)
@@ -33,9 +39,19 @@
     - [R : 와플차트](https://github.com/lumiamitie/TIL/blob/master/viz/r_waffle.md)
 - 그외 잡다한 정보들
 
-## 시즌2 (2018-10-15 ~ 2019-01-22)
+</div>
+</details>
 
-출석률 100% 성공!
+---
+
+## 시즌2
+
+- 2018-10-15 ~ 2019-01-22
+- 출석률 100% 성공!
+
+<details>
+<summary>시즌2 결과물 정리</summary>
+<div markdown="1">
 
 ### Data Science
 
@@ -99,9 +115,19 @@
 - ETC
     - [Lambda Calculus](https://github.com/lumiamitie/TIL/blob/master/dev/lambda_calculus.md)
 
-## 시즌3 (2019-03-18 ~ 2019-06-25)
+</div>
+</details>
 
-출석률 71%
+---
+
+## 시즌3
+
+- 2019-03-18 ~ 2019-06-25
+- 출석률 71%
+
+<details>
+<summary>시즌3 결과물 정리</summary>
+<div markdown="1">
 
 ### Data Science
 
@@ -168,9 +194,19 @@
 - [R: R CMD BATCH에서 script에 argument 적용하기](https://github.com/lumiamitie/TIL/blob/master/rstudy/r_cmd_script_with_arg.md)
 - [R: Installing R kernel in Colaboratory Notebook](https://github.com/lumiamitie/TIL/blob/master/rstudy/r_in_colab.md)
 
-## 시즌4 (2019-10-01 ~ 2020-01-08)
+</div>
+</details>
 
-출석률 70%
+---
+
+## 시즌4
+
+- 2019-10-01 ~ 2020-01-08
+- 출석률 70%
+
+<details>
+<summary>시즌4 결과물 정리</summary>
+<div markdown="1">
 
 ### Bayesian
 
@@ -231,6 +267,71 @@
     - [Recipes 라이브러리를 이용한 upsampling 예제](https://github.com/lumiamitie/TIL/blob/master/rstudy/preprocess/recipes_upsampling.md)
     - [Rprofile.site 위치 찾기](https://github.com/lumiamitie/TIL/blob/master/rstudy/where_is_rprofile_site.md)
 
-## 시즌5 (2020-03-02 ~ 2020-06-09)
+</div>
+</details>
 
-TODO!
+---
+
+## 시즌5
+
+- 2020-03-02 ~ 2020-06-09
+- 출석률 91%
+
+### Dev
+
+- JavaScript, Web, CSS
+    - [asyncPool 직접 구현하기](https://github.com/lumiamitie/TIL/blob/master/js/async/asyncPool.md)
+    - [JS Promise 내부에서 reject 하더라도 뒷 부분 코드들이 계속해서 실행되는 문제](https://github.com/lumiamitie/TIL/blob/master/js/async/return_after_reject_promise.md)
+    - [테두리와 여백까지 포함하여 정확한 컨텐츠 크기 설정하기 (CSS box-sizing)](https://github.com/lumiamitie/TIL/blob/master/js/css/box_sizing.md)
+    - [CSS Block Element 가운데 정렬하기](https://github.com/lumiamitie/TIL/blob/master/js/css/center_block_element.md)
+    - [CSS drop-shadow VS box-shadow](https://github.com/lumiamitie/TIL/blob/master/js/css/drop_vs_box_shadow.md)
+    - [CSS의 단위들 : % vs Viewport Units](https://github.com/lumiamitie/TIL/blob/master/js/css/percent_vs_viewport.md)
+    - [CSS로 작은 디바이스에서만 줄바꿈하려면 어떻게 해야 할까?](https://github.com/lumiamitie/TIL/blob/master/js/css/responsive_line_breaks.md)
+    - [div 태그 안에 이미지를 삽입할 때 생기는 빈 공간 제거하기](https://github.com/lumiamitie/TIL/blob/master/js/css/unintended_gap_inside_div.md)
+    - [크롬 브라우저에서 Node 디버깅하기](https://github.com/lumiamitie/TIL/blob/master/js/environment/debug_node_with_chrome.md)
+    - [Node.js 어플리케이션을 도커 컨테이너에 넣기](https://github.com/lumiamitie/TIL/blob/master/js/environment/dockerize_node_app.md)
+    - [encodeURI 와 encodeURIComponent 의 차이점](https://github.com/lumiamitie/TIL/blob/master/js/general_web/encodeuri_vs_encodeuricomponent.md)
+    - [Konva 이미지 노드에 border-radius 적용하기](https://github.com/lumiamitie/TIL/blob/master/js/snippet/border_radius_for_konva_image.md)
+    - [모바일 디바이스 여부를 확인해보자](https://github.com/lumiamitie/TIL/blob/master/js/snippet/detect_mobile.md)
+    - [Node-Mysql2 쿼리에서 테이블 이름을 변수로 처리하기](https://github.com/lumiamitie/TIL/blob/master/js/snippet/nodemysql_tablename_as_variable.md)
+    - [JS에서 range 함수 구현하기](https://github.com/lumiamitie/TIL/blob/master/js/snippet/range_function.md)
+    - [Node-MySQL2 promise API 에서 transaction 사용하기](https://github.com/lumiamitie/TIL/blob/master/js/snippet/using_transaction_nodemysql.md)
+    - [크롬 개발자도구 Blackbox 설정: 특정 외부 스크립트를 디버깅하지 않도록 처리하기](https://github.com/lumiamitie/TIL/blob/master/js/test/chrome_debugging.md)
+    - [Puppeteer에서 로컬 html 파일 열기](https://github.com/lumiamitie/TIL/blob/master/js/test/open_local_page_in_puppeteer.md)
+    - [babel/register 사용시 발생하는 regeneratorRuntime is not defined 에러](https://github.com/lumiamitie/TIL/blob/master/js/test/regeneratorRuntimeIsNotDefined.md)
+    - [reduce를 사용해 find를 구현해보자](https://github.com/lumiamitie/TIL/blob/master/js/arr_find_using_reduce.md)
+- React
+    - [React IE11 대응하기](https://github.com/lumiamitie/TIL/blob/master/js/react/react_ie11.md)
+    - [React 라이프사이클](https://github.com/lumiamitie/TIL/blob/master/js/react/react_lifecycle.md)
+    - [React에서 반응형 이미지 적용하기](https://github.com/lumiamitie/TIL/blob/master/js/react/responsive_images.md)
+    - [React에서 텍스트 줄바꿈 사용하기](https://github.com/lumiamitie/TIL/blob/master/js/react/text_newline.md)
+- Python
+    - [Python 딕셔너리의 key를 프로퍼티처럼 접근하기](https://github.com/lumiamitie/TIL/blob/master/python/snippet/dict_obj_attrs_wrapper.md)
+    - [Datetime 과 Unix Timestamp 변환하기](https://github.com/lumiamitie/TIL/blob/master/python/snippet/dttm_timestamp.md)
+    - [Python requests : Link Header 파싱하기](https://github.com/lumiamitie/TIL/blob/master/python/snippet/parsing_link_header.md)
+    - [파이썬에서 쿼리스트링 파싱하기](https://github.com/lumiamitie/TIL/blob/master/python/snippet/parsing_querystring.md)
+    - [PythonAnywhere 에서 static html 파일 서빙하기](https://github.com/lumiamitie/TIL/blob/master/python/snippet/staic_html_serving_pythonanywhere.md)
+- Git
+    - [마지막 커밋 변경하기](https://github.com/lumiamitie/TIL/blob/master/ds/git/git_commit_amend.md)
+    - [Git 삭제된 리모트 브랜치 정보를 로컬에서 제거하기](https://github.com/lumiamitie/TIL/blob/master/ds/git/git_remote_prune.md)
+    - [로컬 브랜치에서 작업하던 내용을 원격 저장소 브랜치에 업로드하기](https://github.com/lumiamitie/TIL/blob/master/ds/git/push_to_remote_branch.md)
+    - [git add 한 파일을 다시 unstage 상태로 변경하기](https://github.com/lumiamitie/TIL/blob/master/ds/git/reset_to_unstage.md)
+- Docker
+    - [docker-compose run 으로 컨테이너 내부의 스크립트 실행할 때 포트가 연결되지 않는 현상](https://github.com/lumiamitie/TIL/blob/master/dev/docker/docker_compose_run_port_mapping.md)
+    - [사용하지 않는 docker 이미지 제거하기](https://github.com/lumiamitie/TIL/blob/master/dev/docker/pruning_unused_docker_image.md)
+- Bash
+    - [Bash 에서 ; 와 && 의 차이점이 무엇일까?](https://github.com/lumiamitie/TIL/blob/master/dev/bash_lazy_and_oper.md)
+    - [unzip 명령어로 특정 확장자를 가진 파일만 압축 해제하기](https://github.com/lumiamitie/TIL/blob/master/dev/unzip_specific_extension.md)
+
+### Data
+
+- Bayesian Statistics : Statistical Rethinking 요약 정리
+    - [Ch 5 : Spurious Waffles](https://github.com/lumiamitie/TIL/blob/master/bayesian/statistical_rethinking/ch05_spurious_waffles.md)
+    - [Ch 6 : The Haunted DAG & The Causal Terror](https://github.com/lumiamitie/TIL/blob/master/bayesian/statistical_rethinking/ch06_haunted_dag_and_causal_terror.md)
+    - [Ch 7 : Ulysses' Compass](https://github.com/lumiamitie/TIL/blob/master/bayesian/statistical_rethinking/ch07_ulysses_compass.md)
+    - [Ch 8 : Conditional Manatees](https://github.com/lumiamitie/TIL/blob/master/bayesian/statistical_rethinking/ch08_conditional_manatees.md)
+- SQL
+    - [MySQL에서 숫자에 comma 포맷팅하기](https://github.com/lumiamitie/TIL/blob/master/ds/sql/comma_formatting_in_mysql.md)
+    - [SQL에서 그룹별로 한 개씩 랜덤하게 추출하기](https://github.com/lumiamitie/TIL/blob/master/ds/sql/sampling_an_item_by_group.md)
+- Causal Inference
+    - [구글 Colab에서 CausalNex 튜토리얼 실행시켜보기](https://github.com/lumiamitie/TIL/blob/master/python/causal_inference/causalnex_in_colab.md)
