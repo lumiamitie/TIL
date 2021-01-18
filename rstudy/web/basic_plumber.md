@@ -110,5 +110,7 @@ GET http://127.0.0.1:8989/plot/iris
 
 # 참고자료
 
+- [Github rstudio/plumber](https://github.com/rstudio/plumber)
+- [Github rstudio/plumber : Example scripts](https://github.com/rstudio/plumber/tree/master/inst/plumber)
 - [R plumber Documents](https://www.rplumber.io/)
 - [R로 만든 머신러닝 모델을 API로 제공하기](https://mrchypark.github.io/r-api-with-plumber/)
