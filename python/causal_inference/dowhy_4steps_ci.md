@@ -57,3 +57,46 @@ model = CausalModel(
 )
 # INFO:dowhy.causal_model:Model to find the causal effect of treatment ['v0'] on outcome ['y']
 ```
+
+## 2. Identification
+
+- Causal Graph와 목표로 하는 수치(예를 들면 A의 B에 대한 효과)가 주어져 있다면, 관측한 데이터를 바탕으로 목표 수치를 추정할 수 있는지 확인해야 한다.
+- 이러한 프로세스를 **Identification** 이라고 한다.
+- identification은 데이터로 확인할 수 있는 변수만 고려한다.
+- 주로 2가지 방법을 사용한다.
+    - **Backdoor criterion** (더 일반적인 표현으로는 adjustment sets)
+        - 모든 공통 원인들에 대해 조건을 부여하면 인과 효과를 Identification 할 수 있다
+    - **Instrumental variable (IV) identification**
+        - instrumental variable을 사용할 수 있다면, 공통 원인 변수가 관측되지 않았더라도 효과를 추정할 수 있다
+        - instrument 변수가 결과 변수에 미치는 영향은 2개의 부분으로 나눌 수 있다
+        - instrument -> Action 의 효과와 Action -> Outcome 의 효과
+
+```python
+# 2단계 : 인과 효과를 idenfity하고 목표 estimands를 반환한다
+identified_estimand = model.identify_effect()
+print(identified_estimand)
+# WARN: Do you want to continue by ignoring any unobserved confounders?
+# (use proceed_when_unidentifiable=True to disable this prompt) [y/n] y
+# INFO:dowhy.causal_identifier:Instrumental variables for treatment and outcome:['Z0', 'Z1']
+# INFO:dowhy.causal_identifier:Frontdoor variables for treatment and outcome:[]
+# Estimand type: nonparametric-ate
+
+# ### Estimand : 1
+# Estimand name: backdoor1 (Default)
+# Estimand expression:
+#   d                                 
+# ─────(Expectation(y|W2,W0,W3,W1,W4))
+# d[v₀]                               
+# Estimand assumption 1, Unconfoundedness: If U→{v0} and U→y then P(y|v0,W2,W0,W3,W1,W4,U) = P(y|v0,W2,W0,W3,W1,W4)
+
+# ### Estimand : 2
+# Estimand name: iv
+# Estimand expression:
+# Expectation(Derivative(y, [Z0, Z1])*Derivative([v0], [Z0, Z1])**(-1))
+# Estimand assumption 1, As-if-random: If U→→y then ¬(U →→{Z0,Z1})
+# Estimand assumption 2, Exclusion: If we remove {Z0,Z1}→{v0}, then ¬({Z0,Z1}→y)
+
+# ### Estimand : 3
+# Estimand name: frontdoor
+# No such variable found!
+```
