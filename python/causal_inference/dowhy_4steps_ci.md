@@ -2,7 +2,7 @@
 
 다음 문서의 일부 내용을 요약하여 정리한다.
 
-![microsoft/dowhy : Tutorial on Causal Inference and its Connections to Machine Learning](https://microsoft.github.io/dowhy/example_notebooks/tutorial-causalinference-machinelearning-using-dowhy-econml.html)
+![dowhy : Tutorial on Causal Inference and its Connections to Machine Learning](https://microsoft.github.io/dowhy/example_notebooks/tutorial-causalinference-machinelearning-using-dowhy-econml.html)
 
 ```python
 !pip install dowhy econml
@@ -99,4 +99,68 @@ print(identified_estimand)
 # ### Estimand : 3
 # Estimand name: frontdoor
 # No such variable found!
+```
+
+## 3. Estimation
+
+- Estimation 단계에서는 목표로 하는 수치(target estimand)에 대한 통계적 추정치를 계산한다.
+- `DoWhy` 에는 몇 가지 표준적인 추정 방법이 구현되어 있으며, `EconML` 에는 머신러닝을 사용한 다양한 추정 방법이 구현되어 있다.
+
+```python
+# 3단계 : 통계적인 방법을 이용해 target estimand를 추정한다
+# (3-1) dowhy에 구현된 Propensity Score Stratification 사용
+propensity_strat_estimate = model.estimate_effect(
+    identified_estimand,
+    method_name="backdoor.dowhy.propensity_score_stratification"
+)
+
+print(propensity_strat_estimate)
+# *** Causal Estimate ***
+#
+# ## Identified estimand
+# Estimand type: nonparametric-ate
+#
+# ## Realized estimand
+# b: y~v0+W2+W4+W3+W1+W0
+# Target units: ate
+#
+# ## Estimate
+# Mean value: 10.05642318208062
+```
+
+
+```python
+# (3-2) econML에 구현된 Double-ML 사용
+import econml
+from sklearn.preprocessing import PolynomialFeatures
+from sklearn.linear_model import LassoCV
+from sklearn.ensemble import GradientBoostingRegressor
+
+dml_estimate = model.estimate_effect(
+    identified_estimand,
+    method_name="backdoor.econml.dml.DMLCateEstimator",
+    method_params={
+        'init_params': {
+            'model_y':GradientBoostingRegressor(),
+            'model_t': GradientBoostingRegressor(),
+            'model_final':LassoCV(fit_intercept=False),
+        },
+        'fit_params': {}
+    }
+)
+
+print(dml_estimate)
+# *** Causal Estimate ***
+#
+# ## Identified estimand
+# Estimand type: nonparametric-ate
+#
+# ## Realized estimand
+# b: y~v0+W2+W4+W3+W1+W0 | 
+# Target units: ate
+#
+# ## Estimate
+# Mean value: 10.01686922556652
+# Effect estimates: [10.01686923 10.01686923 10.01686923 ... 10.01686923 10.01686923
+#  10.01686923]
 ```
