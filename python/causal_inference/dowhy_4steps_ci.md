@@ -164,3 +164,28 @@ print(dml_estimate)
 # Effect estimates: [10.01686923 10.01686923 10.01686923 ... 10.01686923 10.01686923
 #  10.01686923]
 ```
+
+## 4. Refutation
+
+인과관계 분석에서 가장 중요한 것은 추정이 얼마나 견고한지(robustness) 확인하는 것이다.
+
+- 1~3단계를 통해 추정치를 얻었지만, 각 단계에서 가정한 내용이 *잘못되었을* 수도 있다.
+- 적절한 테스트 데이터셋이 없기 때문에, 이 단계는 좋은 추정치의 성질을 바탕으로 우리가 얻은 추정치를 반박하는 테스트를 진행한다.
+    - 예를 들면 `placebo_treatment_refuter` 테스트는 액션 변수를 임의의 확률 변수로 변경했을 때 추정치가 0이 나오는지 여부를 확인한다.
+
+```python
+# 4단계 : 모델링을 통해 구한 추정치를 다양한 robustness 확인 방법을 통해 반박할 수 있는지 테스트한다.
+refute_results = model.refute_estimate(
+    identified_estimand, 
+    propensity_strat_estimate,
+    method_name="placebo_treatment_refuter"
+)
+
+print(refute_results)
+# INFO: dowhy.causal_refuters.placebo_treatment_refuter:Making use of Bootstrap as we have more than 100 examples.
+#       Note: The greater the number of examples, the more accurate are the confidence estimates
+# Refute: Use a Placebo Treatment
+# Estimated effect:10.012883831372235
+# New effect:-0.0032724969335703657
+# p value:0.44999999999999996
+```
