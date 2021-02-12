@@ -64,3 +64,107 @@ Honest Causal tree가 기존의 의사결정 트리와 다른 점을 찾기 위�
 - Treatment Effect의 추정치는 근사적으로 정규 분포를 따른다
     - 따라서 분산을 통해 신뢰구간을 구할 수 있다
     - 또한 가설 검정을 통해 유의미한 효과가 존재하는 대상만 추출하는 것이 가능하다
+
+# 예시
+
+```r
+library(tidyverse)
+
+#### 데이터 불러오기 ####
+canvass_data_url <- 'https://raw.githubusercontent.com/markhwhiteii/blog/master/hte_intro/broockman_kalla_replication_data.tab'
+canvass_raw <- read_tsv(canvass_data_url, col_types = cols(.default = "c")) # 모든 컬럼을 문자열 타입으로 파싱하도록 설정
+
+#### 기본적인 전처리 ####
+canvass <- canvass_raw %>% 
+  filter(respondent_t1 == "1.0" & contacted == "1.0") %>% 
+  transmute(
+    treatment = factor(ifelse(treat_ind == "1.0", "Treatment", "Control"), levels = c('Control', 'Treatment')),
+    trans_therm_post = as.numeric(therm_trans_t1),
+    trans_therm_pre = as.numeric(therm_trans_t0),
+    age = as.numeric(vf_age),
+    party = factor(vf_party),
+    race = factor(vf_racename),
+    voted14 = as.integer(vf_vg_14),
+    voted12 = as.integer(vf_vg_12),
+    voted10 = as.integer(vf_vg_10),
+    sdo = as.numeric(sdo_scale), # Social dominance orientation
+    canvass_minutes = as.numeric(canvass_minutes)
+  ) %>% 
+  filter(complete.cases(.))
+# # A tibble: 419 x 11
+#    treatment trans_therm_post trans_therm_pre   age party race    voted14 voted12 voted10       sdo canvass_minutes
+#    <fct>                <dbl>           <dbl> <dbl> <fct> <fct>     <int>   <int>   <int>     <dbl>           <dbl>
+#  1 Control                  3               0    29 D     Africa…       0       1       0 -6.63e-10               3
+#  2 Treatment              100              50    35 D     Africa…       1       1       0  7.11e- 2              13
+#  3 Treatment               50              50    63 D     Africa…       1       1       1 -5.50e- 1              12
+#  4 Control                 30              47    51 N     Caucas…       1       1       0 -1.01e- 1               0
+#  5 Control                 50              74    26 D     Africa…       1       1       0 -6.63e-10               1
+#  6 Treatment               84              76    62 D     Africa…       1       1       1 -9.01e- 1              20
+#  7 Treatment               50              50    20 D     Africa…       1       0       0 -7.60e- 1              20
+#  8 Control                 50              50    51 R     Caucas…       1       1       1  4.19e- 1               1
+#  9 Treatment               50             100    53 R     Caucas…       0       1       1 -6.74e- 1               5
+# 10 Treatment               89              64    66 D     Hispan…       1       1       1  1.14e- 1               2
+# # … with 409 more rows
+
+# trans_therm_pre 변수 기준으로 백분위 25%~75% 사이에 존재하는지 여부를 확인하여 middle 변수에 기록한다
+# - neutral, uncertrain 타겟팅 전략의 효과와 비교하기 위한 변수이다
+canvass_full <- canvass %>% 
+  mutate(middle = between(trans_therm_pre, quantile(trans_therm_pre, 0.25), quantile(trans_therm_pre, 0.75)),
+         middle = as.integer(middle))
+
+#### Train/Test Set 분리 ####
+set.seed(1839)
+sample_idx <- sample(seq_len(nrow(canvass_full)), round(nrow(canvass_full) * 0.6))
+tr_canvass <- canvass_full %>% slice(sample_idx)
+ts_canvass <- canvass_full %>% slice(-sample_idx)
+
+#### Causal forest 학습 ####
+# X : a matrix of the covariates
+# Y : a vector of the outcome of interest
+# W : a vector ot the treatment assignment
+model_cf <- grf::causal_forest(
+  X = model.matrix(~ ., data = tr_canvass %>% select(-c(1:2))),
+  Y = tr_canvass$trans_therm_post,
+  W = as.numeric(tr_canvass$treatment) - 1,
+  num.trees = 5000,
+  seed = 1839
+)
+
+#### Test data 예측 ####
+preds_cf <- predict(
+  object = model_cf, 
+  newdata = model.matrix(~ ., data = ts_canvass %>% select(-c(1:2))),
+  estimate.variance = TRUE
+)
+
+# Test data에 예측 결과 추가
+ts_canvass_preds <- ts_canvass %>% 
+  mutate(preds = preds_cf$predictions)
+
+#### 변수별 중요도 추출하기 ####
+model_cf %>% 
+  grf::variable_importance() %>% {
+    tibble(
+      variable = colnames(model_cf$X.orig),
+      importance = .[,1]
+  )} %>% 
+  arrange(-importance)
+# # A tibble: 15 x 2
+#    variable         importance
+#    <chr>                 <dbl>
+#  1 age                  0.292 
+#  2 trans_therm_pre      0.140 
+#  3 canvass_minutes      0.138 
+#  4 sdo                  0.102 
+#  5 raceCaucasian        0.0515
+#  6 voted14              0.0501
+#  7 middle               0.0476
+#  8 raceHispanic         0.0447
+#  9 voted10              0.0425
+# 10 partyN               0.0370
+# 11 partyR               0.0336
+# 12 voted12              0.0205
+# 13 (Intercept)          0     
+# 14 partyOther Party     0     
+# 15 raceAsian            0   
+```
