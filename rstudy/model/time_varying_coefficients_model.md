@@ -40,9 +40,10 @@ c(beta1, beta2, x1, x2, rw, signal, y) %<-% generate_variables(100)
 ```r
 # 모형을 학습한다
 vc_fit <- walker(
-  y ~ -1 + rw1(~ x1 + x2, beta = c(0, 10), sigma = c(2, 1e-04)), 
+  y ~ -1 + rw1(~ x1 + x2, beta = c(0, 10), sigma = c(2, 10)), 
   refresh = 0, 
   chains = 2, 
+  sigma_y = c(2, 1),
   seed = 123
 )
 ```
