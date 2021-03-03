@@ -223,3 +223,62 @@ precis(m8.4_rugged_all, depth = 2)
 
 아프리카 여부를 모형에 포함한 결과, 아프리카 국가들의 평균이 낮다는 점을 모형을 통해 설명할 수 있게 되었다. 
 하지만 기울기에 대해서는 아무런 설명을 하지 못한다. 여전히 좋은 모형은 아니다.
+
+## 8.1.3 Adding an interaction does work
+
+기울기가 변하게 만들려면 인터렉션 효과를 추가해야 한다. 다시 말하면 아프리카 대륙 여부에 따라 조건부로 기울기가 결정되도록 해야 한다.
+
+DAG에서는 아래와 같이 표기할 수 있다. 하지만 다음 DAG는 `G = f(R, C)` 의 관계라는 것만 알려주기 때문에, 인터렉션에 대한 정보를 표현할 수는 없다.
+
+```
+R -> G <- C
+
+R : Ruggedness
+G : GDP
+C : Continent
+```
+
+```r
+m8.5_rugged_all <- quap(
+  alist(
+    log_gdp_std ~ dnorm(mu, sigma),
+    mu <- a[cid] + b[cid] * (rugged_std - 0.215),
+    a[cid] ~ dnorm(1, 0.1),
+    b[cid] ~ dnorm(0, 0.3),
+    sigma ~ dexp(1)
+  ),
+  data = rugged_std2
+)
+
+precis(m8.5_rugged_all, depth = 2)
+#        mean   sd  5.5% 94.5%
+# a[1]   0.89 0.02  0.86  0.91
+# a[2]   1.05 0.01  1.03  1.07
+# b[1]   0.13 0.07  0.01  0.25    # 아프리카의 경우 slope의 방향이 다르다!
+# b[2]  -0.14 0.05 -0.23 -0.06
+# sigma  0.11 0.01  0.10  0.12
+```
+
+기울기의 변화로 인해 모형이 더 잘 학습되었을까? WAIC 값을 통해 앞서 학습했던 2개의 모형과 비교해보자.
+
+8.5 모형의 경우 96%의 estimated model weight를 보이고 있다. 
+만약 우리의 목표가 예측이었다면, 데이터가 인터렉션 효과의 존재를 강력하게 뒷받침하고 있다고 볼 수도 있는 상황이다.
+하지만 8.4에 약간 부여된 weight를 통해, 모형 8.5의 기울기에 대한 posterior mean이 과적합되었다고 생각할 수 있다.
+또한 상위 2개의 모형의 WAIC 차이의 Standard Error는 그 차이값 만큼이나 높다.
+결국 아프리카 내에도 국가들이 너무 많다는 것이다.
+
+```r
+compare(m8.3_rugged_all, m8.4_rugged_all, m8.5_rugged_all)
+#                   WAIC    SE dWAIC   dSE pWAIC weight
+# m8.5_rugged_all -258.7 15.18   0.0    NA   5.4   0.96
+# m8.4_rugged_all -252.2 15.25   6.6  6.74   4.3   0.04
+# m8.3_rugged_all -188.6 13.21  70.1 15.44   2.8   0.00
+```
+
+WAIC 또는 LOO 값을 점추정으로 뽑고 싶다면, `pointwise = TRUE` 옵션을 추가한다.
+어떤 국가들의 posterior가 값의 변동에 예민한지 확인하는데 도움이 된다.
+
+```r
+# 170 국가들 각각에 대한 WAIC 값을 추출한다
+waic_list <- WAIC(m8.5_rugged_all, pointwise = TRUE)
+```
