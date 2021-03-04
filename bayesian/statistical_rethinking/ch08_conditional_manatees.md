@@ -282,3 +282,68 @@ WAIC 또는 LOO 값을 점추정으로 뽑고 싶다면, `pointwise = TRUE` 옵�
 # 170 국가들 각각에 대한 WAIC 값을 추출한다
 waic_list <- WAIC(m8.5_rugged_all, pointwise = TRUE)
 ```
+
+## 8.1.4 Plotting the interaction
+
+2개의 그래프를 그려보자. 
+
+1. 아프리카 국가들에 대한 MAP 회귀선과 97% 구간
+2. 비 아프리카 국가들에 대한 MAP 회귀선과 97% 구간
+
+```r
+# Africa Nations
+af_mu_link <- link(
+  m8.5_rugged_all, 
+  data = data.frame(cid = 1, rugged_std = seq(from = -0.1, to = 1.1, length.out = 30))
+)
+
+af_mu_link_mean <- apply(af_mu_link, 2, mean)
+af_mu_link_ci <- apply(af_mu_link, 2, PI, prob = 0.97)
+
+af_mu_link_df <- tibble(
+  rugged_seq = seq(from = -0.1, to = 1.1, length.out = 30),
+  mu_mean = af_mu_link_mean,
+  mu_ci_02 = af_mu_link_ci[1,],
+  mu_ci_98 = af_mu_link_ci[2,]
+)
+
+p_af <- rugged_std_af %>% 
+  ggplot() +
+  geom_point(aes(x = rugged_std, y = log_gdp_std), size = 2, color = '#1D4E89') +
+  geom_line(data = af_mu_link_df, aes(x = rugged_seq, y = mu_mean)) +
+  geom_ribbon(data = af_mu_link_df, aes(x = rugged_seq, ymin = mu_ci_02, ymax = mu_ci_98), 
+              fill = '#1D4E89', alpha = 0.5) +
+  labs(x = 'Ruggedness (Standardized)', y = 'log GDP (as proportion of mean)',
+       title = 'Africa Nations') +
+  theme_minimal()
+
+# Non-Africa Nations
+naf_mu_link <- link(
+  m8.5_rugged_all, 
+  data = data.frame(cid = 2, rugged_std = seq(from = -0.1, to = 1.1, length.out = 30))
+)
+
+naf_mu_link_mean <- apply(naf_mu_link, 2, mean)
+naf_mu_link_ci <- apply(naf_mu_link, 2, PI, prob = 0.97)
+
+naf_mu_link_df <- tibble(
+  rugged_seq = seq(from = -0.1, to = 1.1, length.out = 30),
+  mu_mean = naf_mu_link_mean,
+  mu_ci_02 = naf_mu_link_ci[1,],
+  mu_ci_98 = naf_mu_link_ci[2,]
+)
+
+p_naf <- rugged_std_naf %>% 
+  ggplot() +
+  geom_point(aes(x = rugged_std, y = log_gdp_std), size = 2, color = '#000000') +
+  geom_line(data = naf_mu_link_df, aes(x = rugged_seq, y = mu_mean)) +
+  geom_ribbon(data = naf_mu_link_df, aes(x = rugged_seq, ymin = mu_ci_02, ymax = mu_ci_98), 
+              fill = '#000000', alpha = 0.5) +
+  labs(x = 'Ruggedness (Standardized)', y = 'log GDP (as proportion of mean)',
+       title = 'Non-Africa Nations') +
+  theme_minimal()
+
+gridExtra::grid.arrange(p_af, p_naf, ncol = 2)
+```
+
+![](fig/ch8_interaction_af_naf.png)
