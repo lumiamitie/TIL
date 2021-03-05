@@ -347,3 +347,62 @@ gridExtra::grid.arrange(p_af, p_naf, ncol = 2)
 ```
 
 ![](fig/ch8_interaction_af_naf.png)
+
+# 8.2 Symmetry of interactions
+
+인터렉션은 뷔리당의 당나귀 문제와 비슷하다. 간단한 인터렉션 모형은 두 가지 대칭되는 해석으로 이해할 수 있다. 
+모형 이외의 정보가 없다면, 두 해석 중 어떤 것이 더 맞는지 판단할 방법이 없다. GDP와 지형 기복 문제를 다시 한 번 살펴보자.
+인터렉션은 두 가지 유효한 문장으로 풀어낼 수 있다.
+
+1. 아프리카 국가 여부에 따라 지형 기복과 log GDP 사이의 상관관계가 어떻게 변할까?
+2. 지형 기복에 따라 아프리카 국가 여부와 log GDP 사이의 상관관계가 어떻게 변할까?
+
+두 가지 가능성은 다르지만, 모형이라는 골렘의 관점에서 이 둘은 동일하다. 먼저 수학적으로 살펴보자.
+
+`mu_i` 에 대한 모형을 다시 살펴보자.
+
+```
+mu_i = alpha_{CID[i]} + beta_{CID[i]} * (r_i - r_bar)
+```
+
+이전에는 *"기울기가 대륙에 따라 다르다"* 라고 해석했다. 하지만 절편이 지형 기복에 따라 달라진다고 볼 수도 있다.
+식을 아래와 같이 다시 작성해보자.
+
+```
+mu_i = (2 - CID_i) * (alpha_1 + beta_1 *(r_i - r_bar))
+     + (CID_i - 1) * (alpha_2 + beta_2 *(r_i - r_bar))
+```
+
+- `CID_i = 1` 일 경우 첫 번째 항만 남는다
+- `CID_i = 2` 일 경우 두 번째 항만 남는다
+
+이제 어떤 나라가 아프리카 대륙이 되었다고 가정해서 어떤 변화가 일어나는지 상상해보자. 예측값이 어떻게 바뀌는지 알고 싶다면, 지형 기복 지표를 알아야 한다.
+다음의 해석을 그래프로 그려보는 것이 도움이 된다. 
+
+> 아프리카 대륙 여부와 log GDP의 관계는 지형 기복 지표에 따라 결정된다.
+
+지형 기복 지표를 고정시켜 둔 상태에서 아프리카 여부에 따른 차이를 계산해보면 된다. 이 값을 계산하려면 `link` 를 두 번 사용하고 그 차이를 비교하면 된다.
+
+```r
+rugged_seq <- seq(from = -0.2, to = 1.2, length.out = 30)
+mu_af <- link(m8.5_rugged_all, data = data.frame(cid = 1, rugged_std = rugged_seq))
+mu_naf <- link(m8.5_rugged_all, data = data.frame(cid = 2, rugged_std = rugged_seq))
+mu_delta <- mu_af - mu_naf
+
+mu_delta_link_df <- tibble(
+  rugged_seq = rugged_seq,
+  mu_delta_mean = apply(mu_delta, 2, mean),
+  mu_delta_ci_02 = apply(mu_delta, 2, PI, prob = 0.97)[1,],
+  mu_delta_ci_98 = apply(mu_delta, 2, PI, prob = 0.97)[2,]
+)
+
+ggplot(mu_delta_link_df, aes(x = rugged_seq)) +
+  geom_line(aes(y = mu_delta_mean)) +
+  geom_ribbon(aes(ymin = mu_delta_ci_02, ymax = mu_delta_ci_98), 
+              fill = '#1D4E89', alpha = 0.5) +
+  labs(x = 'Ruggedness', y = 'Expected Difference log GDP', 
+       title = 'The interaction between ruggedness and continent') +
+  theme_minimal()
+```
+
+![](fig/ch8_interaction_cont_rgn.png)
