@@ -10,6 +10,9 @@ R 환경을 한 번 세팅하고 나면 갈아엎기가 뭔가 귀찮다. 개인
     - tidyverse 이미지로 세팅해야 한다
     - 기본 rstudio 계정 말고, root 권한 받은 계정으로 새로 생성하거나 rstudio 계정에 root 권한 줘야 한다
     - 그래프 작업을 위한 폰트 세팅
+    - Dockerfile이 실행될 때 `rstudio-server start` 명령을 자동으로 시작하도록 설정해야 한다
+    - cairo 관련 디펜던시 설치가 필요할 것 같다
+    - renv로 필요한 라이브러리를 미리 설치해두고 싶다
 
 ```Dockerfile
 FROM rocker/rstudio:latest
@@ -35,7 +38,7 @@ WORKDIR /home/rstudio/workspace
 
 - TODO
     - 드랍박스에 업로드되지 않았으면 파일을 로컬 환경과 공유할 수 있도록 임의의 폴더를 추가로 마운트(아마도 tmp)
-    - 컨테이너 생성될 때 `rstudio-server start` 명령을 실행하도록 수정
+    - 컨테이너 생성될 때 `rstudio-server start` 명령을 실행하도록 수정 (이건 Dockefile 내부에서 실행하는 것이 맞는 것 같다..)
 
 ```yaml
 version: '3.5'
