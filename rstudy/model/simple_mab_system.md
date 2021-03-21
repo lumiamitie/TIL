@@ -61,3 +61,8 @@ binomialBandit$getUpdates()
 # MAB JSON API를 제공한다
 deployBandit(binomialBandit, port = 8000)
 ```
+
+# 참고자료
+
+- [Github | bayesAB](https://github.com/FrankPortman/bayesAB)
+- [Evaluating impact of interventions](https://www.machinegurning.com/rstats/bayes_thinking/)
