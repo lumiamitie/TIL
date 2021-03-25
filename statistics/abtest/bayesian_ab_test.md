@@ -18,4 +18,18 @@ p-value 는 B안이 A안보다 좋을 확률을 의미하는 것이 아니지만
 
 흔히 사용하는 A/B 테스트 방식은 false positive 를 발생시키기 쉽다. 예를 들어, 여러 가지 목표를 만들어 두고 테스트가 끝날 때 특정 목표를 선택해버릴 수도 있다. 
 
-# Introduction
+# The Joint Posterior for 2 variants
+
+A안과 B안이라는 2개의 선택지가 있다고 해보자. 이 때, joint posterior는 다음과 같다.
+
+```
+P(lambda_A, lambda_B) = P_A(lambda_A) * P_B(lambda_B)
+
+lambda_A : A안의 true conversion rate
+lambda_B : B안의 true conversion rate
+P_A(lambda_A) : A안에 대한 Posterior distribution
+P_B(lambda_B) : B안에 대한 Posterior distribution
+```
+
+Joint posterior 를 알고있으면 다양한 값을 구할 수 있다. 그 중에서 가장 중요한 것은 loss function 이다.
+이 함수를 바탕으로 어떤 안을 선택할지, 언제 테스트를 멈출지 결정할 것이다.
