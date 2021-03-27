@@ -33,3 +33,12 @@ P_B(lambda_B) : B안에 대한 Posterior distribution
 
 Joint posterior 를 알고있으면 다양한 값을 구할 수 있다. 그 중에서 가장 중요한 것은 loss function 이다.
 이 함수를 바탕으로 어떤 안을 선택할지, 언제 테스트를 멈출지 결정할 것이다.
+
+## Chance to beat control
+
+데이터를 통해 증거를 모으고 그 결과 A안을 선택했다고 해보자. 우리가 실수했을 가능성은 얼마나 될까? 
+Error Probability는 다음과 같이 정의할 수 있다.
+
+```
+E[I](A) = \int_{0}^{1} \int_{0}^{\lambda_A} P(\lambda_A, \lambda_B) d\lambda_B \lambda_A
+```
