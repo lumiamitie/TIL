@@ -167,3 +167,16 @@ C_A   : A안의 판매량
 S_A   : A안의 경험적인(empirical) 판매당 수익
 S^k_A : A안에서 k번째 고객의 구매금액
 ```
+
+# Posterior distribution for revenue/sale
+
+## Computing a posterior on sale size
+
+변수 `s` 가 `decay rate=theta` 인 지수분포를 따르고 theta의 Prior가 `Gamma(k, Theta)` 일 때, Posterior는 다음과 같다.
+
+```
+P(theta | s) ~ Gamma(k+c , Theta / (1 + Theta_cs))
+
+- 변수들의 집합 s^i 는 Exp(theta)를 따른다
+- i = 1,...,c
+```
