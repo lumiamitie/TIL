@@ -180,3 +180,32 @@ P(theta | s) ~ Gamma(k+c , Theta / (1 + Theta_cs))
 - 변수들의 집합 s^i 는 Exp(theta)를 따른다
 - i = 1,...,c
 ```
+
+## The total Posterior
+
+위 항목을 정의했다면 이제 `(lambda, theta)` 에 대한 Joint Posterior를 계산할 수 있다. 
+
+```
+다음과 같은 Prior를 가정한다.
+lambda ~ f(lambda; a, b)
+theta  ~ gamma(k, Theta, theta)
+
+Posterior는 다음과 같다.
+P(lambda, theta | n, c, s) 
+= f(lambda; a+c, b+n-c) * gamma(k+c, Theta / (1 + Theta_cs), theta)
+```
+
+# Chance to beat all for Revenue
+
+각 안의 총 수입은 `lambda * theta` 로 구할 수 있다. 구매 확률에 평균 판매가격을 곱한 값을 의미한다. A안과 B안 각각에 대한 lambda, theta 값의 posterior를 구했다고 가정하면 다음과 같이 계산할 수 있다.
+
+```
+P(lambda_B / theta_B > lambda_A / theta_A)
+= (수식이 너무 길어서 여기서는 생략..)
+```
+
+수식의 적분 부분은 Monte Carlo Sampling을 통해 계산할 수 있다.
+
+1. `lambda_A` , `theta_A` , `lambda_B` , `theta_B` 가 따르는 분포로부터 각각 M개의 샘플을 추출한다.
+    - `i = 1, ... , M`
+2. 각 인덱스별로 `lambda_B / theta_B > lambda_A / theta_A` 인 개수를 구하고 M으로 나눈다.
