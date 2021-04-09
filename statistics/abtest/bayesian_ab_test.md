@@ -209,3 +209,21 @@ P(lambda_B / theta_B > lambda_A / theta_A)
 1. `lambda_A` , `theta_A` , `lambda_B` , `theta_B` 가 따르는 분포로부터 각각 M개의 샘플을 추출한다.
     - `i = 1, ... , M`
 2. 각 인덱스별로 `lambda_B / theta_B > lambda_A / theta_A` 인 개수를 구하고 M으로 나눈다.
+
+# Making decisions based on Revenue
+
+이제 Loss Function 을 정의해보자. 
+여기서는 잘못된 선택을 했을 때 우리가 선택한 안과 나머지 안 중에서 가장 효과가 좋았던 안의 기대수익 차이를 Loss Function 으로 정의한다.
+
+```
+다음과 같이 정의한다.
+L(lambda_A, lambda_B, theta_A, theta_B, A) = max(lambda_B / theta_B - lambda_A / theta_A, 0)
+L(lambda_A, lambda_B, theta_A, theta_B, B) = max(lambda_A / theta_A - lambda_B / theta_B, 0)
+
+이제 Expected Loss를 정의할 수 있다.
+E[L](A) = E[ L(lambda_A, lambda_B, theta_A, theta_B, A) ]
+E[L](B) = E[ L(lambda_A, lambda_B, theta_A, theta_B, B) ]
+```
+
+Bernoulli 분포를 사용하는 케이스에서는 Expected Loss 가 에러 허용치 `e` 이하로 떨어지는 지점에서 의사결정을 내린다. 
+특히 특정한 안의 Expected Loss 가 `e` 이하로 떨어지면 해당 안을 선택하게 된다.
