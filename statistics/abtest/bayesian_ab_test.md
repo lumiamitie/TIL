@@ -232,3 +232,8 @@ Bernoulli 분포를 사용하는 케이스에서는 Expected Loss 가 에러 허
 
 - 다음 레포지토리를 참고하여 A/B 테스트 효과 추정 과정을 코드로 구현해보자.
 - <https://github.com/cbellei/abyes>
+
+## 코드 구현시 참고자료
+
+- https://github.com/cbellei/abyes/blob/master/abyes/ab_exp.py
+- http://www.claudiobellei.com/2017/11/02/bayesian-AB-testing/
