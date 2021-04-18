@@ -237,3 +237,37 @@ Bernoulli 분포를 사용하는 케이스에서는 Expected Loss 가 에러 허
 
 - https://github.com/cbellei/abyes/blob/master/abyes/ab_exp.py
 - http://www.claudiobellei.com/2017/11/02/bayesian-AB-testing/
+
+```python
+import numpy as np
+import pymc3 as pm
+
+data = [np.random.binomial(1, 0.4, size=10000), np.random.binomial(1, 0.5, size=10000)]
+
+ALPHA_PRIOR = 1
+BETA_PRIOR = 1
+ITERATIONS = 500
+
+with pm.Model() as ab_model:
+    # Priors
+    mua = pm.distributions.continuous.Beta('muA', alpha=ALPHA_PRIOR, beta=BETA_PRIOR)
+    mub = pm.distributions.continuous.Beta('muB', alpha=ALPHA_PRIOR, beta=BETA_PRIOR)
+    
+    # Likelihoods
+    pm.Bernoulli('likelihoodA', mua, observed=data[0])
+    pm.Bernoulli('likelihoodB', mub, observed=data[1])
+
+    # Find distribution of lif (difference)
+    pm.Deterministic('lift', mub - mua)
+    
+    # Find distribution of effect size
+    sigma_a = pm.Deterministic('sigmaA', np.sqrt(mua * (1 - mua)))
+    sigma_b = pm.Deterministic('sigmaB', np.sqrt(mub * (1 - mub)))
+    pm.Deterministic('effect_size', (mub - mua) / (np.sqrt(0.5 * (sigma_a ** 2 + sigma_b ** 2))))
+
+    start = pm.find_MAP()
+    step = pm.Slice()
+    trace = pm.sample(ITERATIONS, step=step, start=start)
+
+# TODO np.histogram + np.trapz 를 이용해 확률을 구하는 것과 그냥 개수세는 방식으로 확률을 구할 때 결과값 차이가 있나?
+```
