@@ -270,4 +270,33 @@ with pm.Model() as ab_model:
     trace = pm.sample(ITERATIONS, step=step, start=start)
 
 # TODO np.histogram + np.trapz 를 이용해 확률을 구하는 것과 그냥 개수세는 방식으로 확률을 구할 때 결과값 차이가 있나?
+RESOLUTION = 500
+
+lift_trace = trace['lift'][500:]
+lift_bins = np.linspace(
+    np.min(lift_trace) - 0.2 * abs(np.min(lift_trace)), 
+    np.max(lift_trace) + 0.2 * abs(np.max(lift_trace)), 
+    RESOLUTION
+)
+lift_binned = np.histogram(lift_trace, bins=lift_bins, density=True)
+
+# Calculate Expected Loss
+dl = 0.5 * (lift_binned[1][0:-1] + lift_binned[1][1:])
+fdl = lift_binned[0]
+
+inta = np.maximum(dl, 0) * fdl
+intb = np.maximum(-dl, 0) * fdl
+
+ela = np.trapz(inta, dl) # 0.10359266799323139
+elb = np.trapz(intb, dl) # 0.0
+
+# Make decision
+TOC = 0.01
+if ela <= TOC and elb <= TOC:
+    print('A안과 B안의 효과는 동등한 것으로 보인다.')
+elif elb < TOC:
+    print('B안이 승리!')
+elif ela < TOC:
+    print('A안이 승리!')
+# B안이 승리!
 ```
