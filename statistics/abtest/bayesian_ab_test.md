@@ -269,26 +269,30 @@ with pm.Model() as ab_model:
     step = pm.Slice()
     trace = pm.sample(ITERATIONS, step=step, start=start)
 
-# TODO np.histogram + np.trapz 를 이용해 확률을 구하는 것과 그냥 개수세는 방식으로 확률을 구할 때 결과값 차이가 있나?
-RESOLUTION = 500
+# (1) np.histogram + np.trapz 를 이용해 Loss Function 계산하기
+# RESOLUTION = 500
+# lift_bins = np.linspace(
+#     np.min(lift_trace) - 0.2 * abs(np.min(lift_trace)), 
+#     np.max(lift_trace) + 0.2 * abs(np.max(lift_trace)), 
+#     RESOLUTION
+# )
+# lift_binned = np.histogram(lift_trace, bins=lift_bins, density=True)
+#
+# # Calculate Expected Loss
+# dl = 0.5 * (lift_binned[1][0:-1] + lift_binned[1][1:])
+# fdl = lift_binned[0]
+#
+# inta = np.maximum(dl, 0) * fdl
+# intb = np.maximum(-dl, 0) * fdl
+#
+# ela = np.trapz(inta, dl) # 0.10359266799323139
+# elb = np.trapz(intb, dl) # 0.0
 
-lift_trace = trace['lift'][500:]
-lift_bins = np.linspace(
-    np.min(lift_trace) - 0.2 * abs(np.min(lift_trace)), 
-    np.max(lift_trace) + 0.2 * abs(np.max(lift_trace)), 
-    RESOLUTION
-)
-lift_binned = np.histogram(lift_trace, bins=lift_bins, density=True)
-
-# Calculate Expected Loss
-dl = 0.5 * (lift_binned[1][0:-1] + lift_binned[1][1:])
-fdl = lift_binned[0]
-
-inta = np.maximum(dl, 0) * fdl
-intb = np.maximum(-dl, 0) * fdl
-
-ela = np.trapz(inta, dl) # 0.10359266799323139
-elb = np.trapz(intb, dl) # 0.0
+# (2) Loss Function의 수식을 정리해보면 다음과 같이 간단하게 정리할 수 있다.
+# lift = lambda_B - lambda_A 라고 정의했을 때,
+# E(L_A) = Max(lift, 0) , E(L_B) = Max(-lift, 0)
+ela = np.mean(np.maximum(lift_trace, 0))  # 0.10359266799323139
+elb = np.mean(np.maximum(-lift_trace, 0)) # 0.0
 
 # Make decision
 TOC = 0.01
@@ -300,3 +304,13 @@ elif ela < TOC:
     print('A안이 승리!')
 # B안이 승리!
 ```
+
+기대값을 구할 때 적분 대신 그냥 산술평균을 써도 동일한 값이 나오는 이유?!
+
+- 위 코드에서 보면 MCMC로 샘플링한 결과에 대해 기대값을 구하려고 한다.
+- 해당 값은 특정한 확률 분포를 기준으로 샘플링된 값이다. 따라서 동일한 값이 여러 개 생성될 경우 해당 값이 여러번 중복되면서 확률분포로 인한 가중치 역할을 대신하게 된다.
+- 따라서 샘플링 결과에 산술 평균을 적용한 결과는 확률 분포를 바탕으로 구한 기대값과 결과적으로는 동일한 형태가 된다. (엄밀하게 말하면 contiuous 케이스에서는 적용되지 않지만, 개수 정해놓고 샘플링한 결과기 때문에 discrete 한 경우로 가정해도 될 것 같다.)
+
+> Similarly, the expected value can be thought of as the arithmetic mean of a set of numbers generated in exact proportion to their probability of occurring (in the case of a continuous random variable this isn't exactly true since specific values have probability 0)
+
+[Cross Validated | Why is expectation the same as the arithmetic mean?](https://stats.stackexchange.com/a/30367)
