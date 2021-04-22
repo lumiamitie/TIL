@@ -233,10 +233,9 @@ Bernoulli 분포를 사용하는 케이스에서는 Expected Loss 가 에러 허
 - 다음 레포지토리를 참고하여 A/B 테스트 효과 추정 과정을 코드로 구현해보자.
 - <https://github.com/cbellei/abyes>
 
-## 코드 구현시 참고자료
+## 클릭률만 사용
 
-- https://github.com/cbellei/abyes/blob/master/abyes/ab_exp.py
-- http://www.claudiobellei.com/2017/11/02/bayesian-AB-testing/
+### 코드
 
 ```python
 import numpy as np
@@ -314,3 +313,12 @@ elif ela < TOC:
 > Similarly, the expected value can be thought of as the arithmetic mean of a set of numbers generated in exact proportion to their probability of occurring (in the case of a continuous random variable this isn't exactly true since specific values have probability 0)
 
 [Cross Validated | Why is expectation the same as the arithmetic mean?](https://stats.stackexchange.com/a/30367)
+
+### 코드 구현시 참고자료
+
+- https://github.com/cbellei/abyes/blob/master/abyes/ab_exp.py
+- http://www.claudiobellei.com/2017/11/02/bayesian-AB-testing/
+
+## 클릭률 + 매출/수익 반영
+
+TODO
