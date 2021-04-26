@@ -228,6 +228,10 @@ E[L](B) = E[ L(lambda_A, lambda_B, theta_A, theta_B, B) ]
 Bernoulli 분포를 사용하는 케이스에서는 Expected Loss 가 에러 허용치 `e` 이하로 떨어지는 지점에서 의사결정을 내린다. 
 특히 특정한 안의 Expected Loss 가 `e` 이하로 떨어지면 해당 안을 선택하게 된다.
 
+# 추가 참고자료
+
+[Convoy Tech Blog | The Power of Bayesian A/B Testing](https://medium.com/convoy-tech/the-power-of-bayesian-a-b-testing-f859d2219d5)
+
 # 코드로 구현해보자
 
 - 다음 레포지토리를 참고하여 A/B 테스트 효과 추정 과정을 코드로 구현해보자.
