@@ -277,6 +277,10 @@
 - 2020-03-02 ~ 2020-06-09
 - 출석률 91%
 
+<details>
+<summary>시즌5 결과물 정리</summary>
+<div markdown="1">
+
 ### Dev
 
 - JavaScript, Web, CSS
@@ -335,3 +339,94 @@
     - [SQL에서 그룹별로 한 개씩 랜덤하게 추출하기](https://github.com/lumiamitie/TIL/blob/master/ds/sql/sampling_an_item_by_group.md)
 - Causal Inference
     - [구글 Colab에서 CausalNex 튜토리얼 실행시켜보기](https://github.com/lumiamitie/TIL/blob/master/python/causal_inference/causalnex_in_colab.md)
+
+</div>
+</details>
+
+---
+
+## 시즌6
+
+- 2021-01-18 ~ 2021-04-27
+- 출석률 81%
+
+<details>
+<summary>시즌6 결과물 정리</summary>
+<div markdown="1">
+
+### Dev
+
+- Web
+    - [POST 요청이 서버에서 OPTIONS 로 도달하는 문제](https://github.com/lumiamitie/TIL/blob/master/dev/web/req_change_post_to_option.md)
+    - [Back/forward cache (bfcache)](https://github.com/lumiamitie/TIL/blob/master/js/general_web/bfcache.md)
+    - [iframe 엘리먼트에 추가한 load 이벤트 리스너가 동작하지 않는 문제](https://github.com/lumiamitie/TIL/blob/master/js/general_web/catching_iframe_load_event.md)
+    - [window 에서 click 이벤트를 걸어도 반응하지 않는 문제](https://github.com/lumiamitie/TIL/blob/master/js/general_web/listening_event_with_usecapture.md)
+    - [Salesforce developers : Secure Coding PostMessage 정리](https://github.com/lumiamitie/TIL/blob/master/js/general_web/salesforce_secure_postmessage.md)
+    - [스크립트 태그 : async vs defer](https://github.com/lumiamitie/TIL/blob/master/js/general_web/script_async_vs_defer.md)
+    - [Web Storage를 사용할 수 없는 경우에 대해 정리하기](https://github.com/lumiamitie/TIL/blob/master/js/general_web/webstorage_disabled.md)
+    - [Chrome Client Hints](https://github.com/lumiamitie/TIL/blob/master/js/modern/client_hints.md)
+- Javascript
+    - [함수형 자바스크립트 : 함수자 (Functor)](https://github.com/lumiamitie/TIL/blob/master/js/core/functor.md)
+    - [함수형 자바스크립트 : 모나드 (Monad)](https://github.com/lumiamitie/TIL/blob/master/js/core/monad.md)
+    - [JS 에서 Base64 변환하기](https://github.com/lumiamitie/TIL/blob/master/js/core/base64.md)
+    - [Data URI Scheme 다루기](https://github.com/lumiamitie/TIL/blob/master/js/core/data_uri.md)
+    - [Node express를 위한 swagger 세팅하기](https://github.com/lumiamitie/TIL/blob/master/js/environment/swagger_express.md)
+    - [puppeteer 에서 특정한 도메인에 대한 Request Blocking 하기](https://github.com/lumiamitie/TIL/blob/master/js/test/puppeteer_request_blocking.md)
+    - [JS Snippet : JS에서 CSV 다운로드 기능 구현하기](https://github.com/lumiamitie/TIL/blob/master/js/snippet/csv_download.md)
+    - [JS Snippet : 특정 페이지에 원하는 스크립트가 설치되었는지 확인하기](https://github.com/lumiamitie/TIL/blob/master/js/snippet/check_script_embeded.md)
+    - [JS Snippet : 페이지가 iframe 내부에서 실행되었는지를 JS로 확인하기](https://github.com/lumiamitie/TIL/blob/master/js/snippet/how_to_check_page_loaded_in_iframe.md)
+    - [JS Snippet : Object.assign 없이 2개의 오브젝트 합치기](https://github.com/lumiamitie/TIL/blob/master/js/snippet/merge_object.md)
+    - [JS Snippet : 특정한 id를 가진 엘리먼트로 스크롤 이동하기](https://github.com/lumiamitie/TIL/blob/master/js/snippet/scroll_to_element.md)
+    - [JS Snippet : JS로 화면 및 페이지 크기 구하기](https://github.com/lumiamitie/TIL/blob/master/js/snippet/size_of_screen_and_page.md)
+    - [JS Snippet : 웹페이지의 SVG 엘리먼트를 일반 이미지로 변환하기](https://github.com/lumiamitie/TIL/blob/master/js/snippet/svg_to_image.md)
+    - [JS Snippet : JS 스크립트간 디펜던시 시각화하기](https://github.com/lumiamitie/TIL/blob/master/js/snippet/visualizing_script_dependency.md)
+- CSS
+    - [CSS로 스크롤바 없는 스크롤 구현하기](https://github.com/lumiamitie/TIL/blob/master/js/css/scroll_without_scrollbar.md)
+    - [하나의 CSS Selector로 여러 개의 id 선택하기](https://github.com/lumiamitie/TIL/blob/master/js/css/select_multiple_ids.md)
+- Python
+    - [Python 에서 ${...} 문자열 템플릿 사용하는 방법](https://github.com/lumiamitie/TIL/blob/master/python/snippet/string_template.md)
+- R
+    - [R promises 라이브러리를 사용한 비동기 처리](https://github.com/lumiamitie/TIL/blob/master/rstudy/async/using_promises.md)
+    - [R에서 조건부 에러 처리하기](https://github.com/lumiamitie/TIL/blob/master/rstudy/dev/handling_errors_with_condition.md)
+    - [littler로 R 스크립트 실행할 때는 .Renviron 에 정의된 환경변수가 설정되지 않는다](https://github.com/lumiamitie/TIL/blob/master/rstudy/dev/load_env_in_renviron.md)
+    - [R renv 를 이용한 디펜던시 세팅](https://github.com/lumiamitie/TIL/blob/master/rstudy/dev/manage_dependency_using_renv.md)
+    - [R에서 AWS Athena를 사용하기 위한 ODBC 세팅하기](https://github.com/lumiamitie/TIL/blob/master/rstudy/dev/r_setting_athena_odbc.md)
+    - [개인 R 작업환경 세팅하기](https://github.com/lumiamitie/TIL/blob/master/rstudy/dev/setting_personal_r_env.md)
+    - [bayesAB 라이브러리를 이용해 간단한 MAB 시스템 만들기](https://github.com/lumiamitie/TIL/blob/master/rstudy/model/simple_mab_system.md)
+    - [ggplot2 그래프에 배경 이미지 추가하기](https://github.com/lumiamitie/TIL/blob/master/rstudy/snippet/ggplot_background_image.md)
+    - [R readr 에서 데이터 불러올 때 전체 컬럼의 타입을 하나로 강제해서 불러오기](https://github.com/lumiamitie/TIL/blob/master/rstudy/snippet/readr_all_column_to_chr.md)
+    - [plumber를 사용해 간단한 API 서버 구성하기](https://github.com/lumiamitie/TIL/blob/master/rstudy/web/basic_plumber.md)
+    - [plumber 에서 CORS 처리하기](https://github.com/lumiamitie/TIL/blob/master/rstudy/web/cors_in_plumber.md)
+    - [ggplot2 scale "expand" 옵션 조정하기](https://github.com/lumiamitie/TIL/blob/master/rstudy/visualization/ggplot2_scale_expand.md)
+- Git
+    - [Git : Your branch and 'origin/master' have diverged 문제](https://github.com/lumiamitie/TIL/blob/master/ds/git/diverged_from_origin.md)
+- Docker
+    - [도커 컨테이너에서 Ctr+p, Ctr+q 로 detach하지 못하는 문제](https://github.com/lumiamitie/TIL/blob/master/dev/docker/cannot_detach_from_container.md)
+    - [Docker Anti Patterns](https://github.com/lumiamitie/TIL/blob/master/dev/docker/docker_anti_patterns.md)
+- ETC
+    - [grep 명령어 사용할 때 특정 패턴을 만족하는 항목만 출력하기](https://github.com/lumiamitie/TIL/blob/master/dev/shell/grep_or_not.md)
+    - [Shell 에서 .env 파일의 내용을 바로 환경변수에 등록하기](https://github.com/lumiamitie/TIL/blob/master/dev/shell/set_env_from_file.md)
+    - [정규표현식으로 두 단어 중 하나라도 포함되는 항목 찾기](https://github.com/lumiamitie/TIL/blob/master/dev/regexp/find_any_of_words.md)
+
+### Data
+
+- Causal Inference
+    - [DoWhy Tutorial : The four steps of causal inference](https://github.com/lumiamitie/TIL/blob/master/python/causal_inference/dowhy_4steps_ci.md)
+    - [MatchIt 라이브러리를 사용한 Propensity Score Matching](https://github.com/lumiamitie/TIL/blob/master/rstudy/causal_inference/basic_psm_with_matchit.md)
+    - [lalonde 데이터로 ATE 구하기](https://github.com/lumiamitie/TIL/blob/master/rstudy/causal_inference/lalonde_ipw_ate.md)
+    - [Examining covariate balance in the matched sample](https://github.com/lumiamitie/TIL/blob/master/rstudy/causal_inference/psm_examine_covariate_balance.md)
+    - [Causal Forest 이해하기](https://github.com/lumiamitie/TIL/blob/master/rstudy/causal_inference/understanding_causal_forest.md)
+- ETC
+    - [Bayesian A/B Testing](https://github.com/lumiamitie/TIL/blob/master/statistics/abtest/bayesian_ab_test.md)
+    - [walker 라이브러리를 사용한 time-varying coefficients model 학습하기](https://github.com/lumiamitie/TIL/blob/master/rstudy/model/time_varying_coefficients_model.md)
+    - [Statistical Rethinking Ch 8 : Conditional Manatees](https://github.com/lumiamitie/TIL/blob/master/bayesian/statistical_rethinking/ch08_conditional_manatees.md)
+    - [AWS Athena : JSON String 에서 데이터 추출하기](https://github.com/lumiamitie/TIL/blob/master/ds/sql/aws_athena_json.md)
+
+</div>
+</details>
+
+---
+
+## 시즌7
+
+- 2021-11-15 ~ (진행중)
