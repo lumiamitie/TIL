@@ -48,3 +48,12 @@ git config user.email "mymail@mail.com"
 # 커밋 수정
 git commit --amend --reset-author
 ```
+
+참고로 그냥 `—-amend` 옵션을 쓰면 에디터가 뜨는데, 이 경우 이슈를 기록하기 위해 `#` 으로 시작하면 주석 처리가 되는 경우가 있다. 
+이 때는 다음과 같이 `-m` 옵션을 통해 커밋 메시지를 추가하면 된다.
+
+```bash
+git config user.name "minho"
+git config user.email "minho.lee@email.adress"
+git commit --amend --reset-author -m '#1 깃헙 이슈를 달아볼까 합니다.'
+```
