@@ -19,7 +19,8 @@ yarn add gatsby-plugin-google-gtag
         gtagConfig: {
           // optimize_id: "OPT_CONTAINER_ID",
           anonymize_ip: true,
-          cookie_expires: 0,
+          // cookie_expires: 0 으로 설정하면 값을 세션 쿠키로 저장해서 사용자수가 급증하는 결과물이 나타날 수 있다......
+          // cookie_expires: 0,
         },
         // This object is used for configuration specific to this plugin
         pluginConfig: {
