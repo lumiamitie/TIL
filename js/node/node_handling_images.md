@@ -78,3 +78,94 @@ https.get(imageUrl, res => {
 
 - [StackOverflow | Getting binary content in node.js with http.request](https://stackoverflow.com/a/21024737)
 - [node-canvas Issue 1525 | Crash on Image::SetSource](https://github.com/Automattic/node-canvas/issues/1525)
+
+## node-canvas VS imageMagick VS sharp
+
+- `node-canvas` 에서 직접 외부 이미지를 불러오는 것과 `imageMagick` 또는 `sharp` 를 통해 불러오는 것을 비교하기 위해 작성한 코드이다.
+
+```javascript
+const gm = require('gm').subClass({ imageMagick: true });
+const sharp = require('sharp');
+const { createCanvas, loadImage } = require('canvas');
+
+const http = require('https');
+const Stream = require('stream').Transform;
+const fs = require('fs');
+const path = require('path');
+
+const url = '<Image URL Link>'
+
+function createSampleCanvas() {
+    const canvas = createCanvas(400, 540)
+    const ctx = canvas.getContext('2d')
+    return { canvas, ctx }
+}
+
+function exportCanvasToPNG(canvas, filepath, filename) {
+    const fullFilepath = path.join(filepath, filename);
+    return new Promise((resolve, reject) => {
+        const stream = canvas.createPNGStream();
+        const out = fs.createWriteStream(fullFilepath); 
+        stream.pipe(out);
+        out.on('finish', () => {
+            console.log('Done');
+            resolve(filename);
+        });
+        out.on('error', () => {
+            reject('Error');
+        });
+    })
+};
+
+http.get(url, res => {
+    const data = new Stream()
+    res.on('data', (chunk) => {
+        data.push(chunk)
+    });
+    res.on('end', () => {
+        const imageBuffer = data.read()
+        const tasks = []
+
+        // (1) CASE 01 : Canvas만 사용
+        const caseCanvas = new Promise((resolve, reject) => {
+            const { canvas, ctx } = createSampleCanvas()
+            loadImage(imageBuffer).then((img) => {
+                ctx.drawImage(img, 0, 0)
+                exportCanvasToPNG(canvas, '/tmp', 'testCanvas.png').catch(e => console.error(e))
+            })
+        })
+        tasks.push(caseCanvas)
+
+        // (2) CASE 02 : ImageMagick 사용
+        gm(imageBuffer).toBuffer((err, buffer) => {
+            if (err) {
+                console.error(err)
+                return;
+            }
+            const { canvas, ctx } = createSampleCanvas()
+            const caseImageMagick = loadImage(buffer).then((img) => {
+                ctx.drawImage(img, 0, 0)
+                exportCanvasToPNG(canvas, '/tmp', 'testGm.png').catch(e => console.error(e))
+            })
+            tasks.push(caseImageMagick)
+        })
+
+        // (3) CASE 03 : Sharp 사용
+        const caseSharp = sharp(imageBuffer)
+            .toBuffer()
+            .then(img => {
+                loadImage(img).then((img) => {
+                    const { canvas, ctx } = createSampleCanvas()
+                    ctx.drawImage(img, 0, 0)
+                    exportCanvasToPNG(canvas, '/tmp', 'testSharp.png').catch(e => console.error(e))
+                })
+            })
+            .catch(e => console.error(e))
+        tasks.push(caseSharp)
+
+        Promise.all(tasks)
+            .then(() => console.log('Task done'))
+            .catch(e => console.error(e))
+    })
+})
+```
