@@ -169,3 +169,27 @@ http.get(url, res => {
     })
 })
 ```
+
+## sharp로 길쭉한 이미지 정방형으로 리사이즈하기
+
+sharp의 `.extend()` 메서드를 사용한다.
+
+```javascript
+const rawImage = sharp(imageBuffer.read())
+rawImage
+.metadata()
+.then(({ width, height }) => {
+    console.log(`* Current image size : ${width} x ${height}`)
+    if (width > height) {
+        return (
+            rawImage.extend({
+                top: (width - height) / 2,
+                bottom: (width - height) / 2,
+                background: { r: 255, g: 255, b: 255, alpha: 1 },
+            })
+            .toBuffer()
+        )
+    }
+    return rawImage.toBuffer()
+})
+```
