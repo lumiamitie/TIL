@@ -13,6 +13,22 @@ RDD는 간단한 아이디어를 바탕으로 한다. RDD를 DAG로 표현하면
 
 ![](https://mixtape.scunning.com/causal_inference_mixtape_files/figure-html/unnamed-chunk-103-1.png)
 
+```mermaid
+flowchart TB    
+    subgraph B ["Limiting Graph"]
+        direction LR
+        bU["U"] --> bY["Y"]
+        bX["X → c0"] --> bD["D"] --> bY
+    end
+    subgraph A ["Data Generating Graph"]
+        direction LR
+        X <-.-> U
+        U --> Y
+        X --> Y
+        X --> D --> Y
+    end
+```
+
 - 왼쪽의 그래프에서 `X` 는 Treatment `D` 에 영향을 미치는 연속형 변수다.
 - Treatment 배정은 cutoff 스코어 `c_0` 를 기준으로 이루어진다. (스코어보다 높으면 Treatment)
 - 배정에 사용되는 변수 `X` 는 `X -> Y` path를 통해 영향을 미칠 수 있으며, Y에 독립적으로 영향을 미치는 변수 집합 U와 X가 연관성이 존재할 수도 있다. 이 때 U는 Treatment에 영향을 미칠 수 없다.
@@ -21,3 +37,6 @@ RDD는 간단한 아이디어를 바탕으로 한다. RDD를 DAG로 표현하면
 
 하지만 RDD를 사용하면 인과효과를 찾아낼(identifying) 수 있다. 그 이유를 오른쪽에 있는 Limited DAG에서 확인할 수 있다.
 우리는 컷오프 `c_0` 주위의 점수들을 통해 인과 효과를 판별할 수 있다. 구체적으로 말하면 X가 `c_0` 를 향해 한없이 가까워질 때 부분집합의 평균 인과 효과를 구할 수 있다.
+
+RDD의 그래프 표현을 보면 다양한 가정 사항들이 명시적으로 드러나 있다. 
+그 중에서도 지금 살펴보면 좋을 가정이 하나 있는데, 바로 컷오프가 개입에 직접적인 영향을 미치는 것과 Treatment 여부를 구분하는 것은 완전히 동일한 시점에 이루어지지 않는다는 점이다. 이것이 바로 연속성(continuity) 가정이다. 조금 더 형식적으로 설명하자면 컷오프 지점에서 expected potential outcomes가 연속이라는 것을 의미한다.
