@@ -75,3 +75,13 @@ D_i = 1 (if X_i >= c_0)
 
 이러한 상황에서는 각 `X_i` 값을 알고 있을 때 해당 i 유닛이 Treatment 그룹에 배정될 지 여부를 확실히 알 수 있다.
 하지만 이 말은 실행 변수 사이에 Treatment 여부에 따른 겹치는 구간이 없다는 것을 의미하기도 한다.
+
+Sharp RDD 추정은 실행변수의 값이 컷오프 값에 한없이 가까워질 때, Treatment의 평균 인과효과로 해석한다. 컷오프 지점의 극한값에서만 겹치는 구간이 생기기 때문이다.
+이 평균 인과효과는 LATE(Local Average Treatment Effect)라고 한다. 
+LATE에 대해 알아야 하는 중요한 점을 한 가지만 꼽자면, RDD에서 identification은 제한된 상황에서만 가능하기 때문에 기술적으로 인과효과를 컷오프 지점에서만 확인할 수 있다는 것이다. LATE는 다음과 같이 정의할 수 있다.
+
+```
+delta_{SRD} = E[Y_i^1 - Y_i^0 | X_i = c_0]
+```
+
+Sharp RDD에서는 공통의 support가 없기 때문에, 추정 과정에서 extrapolation에 의존할 수밖에 없다.
